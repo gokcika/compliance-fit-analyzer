@@ -24,10 +24,10 @@ def calculate_similarity(text1, text2):
 # -----------------------------
 # Streamlit UI
 # -----------------------------
-st.set_page_config(page_title="Compliance Fit Analyzer", layout="wide")
+st.set_page_config(page_title="TalentFit", layout="wide")
 
-st.title("Compliance & Digital Transformation Fit Analyzer")
-st.caption("Web-based POC for CV ↔ Job Description Matching")
+st.title("TalentFit: Career Fit Analyzer")
+st.caption("Analyze your CV against job descriptions and highlight strengths & improvement areas")
 
 col1, col2 = st.columns(2)
 
@@ -78,15 +78,27 @@ if cv_file and job_desc:
     st.plotly_chart(fig, use_container_width=True)
 
     # -----------------------------
-    # Why Not Hire Me?
+    # Highlight strengths
     # -----------------------------
-    st.subheader("Why Not Hire Me? (Risk & Improvement Areas)")
+    st.subheader("Why Hire Me? (Key Strengths)")
+
+    strengths = df[df["Match %"] >= 70]
+
+    if strengths.empty:
+        st.info("No particular strengths detected. Consider improving your skills.")
+    else:
+        for _, row in strengths.iterrows():
+            st.success(f"{row['Skill']} → Strong match")
+
+    # -----------------------------
+    # Improvement Areas
+    # -----------------------------
+    st.subheader("Improvement Areas")
 
     risks = df[df["Match %"] < 70]
 
     if risks.empty:
-        st.success("No major risk areas detected. Strong overall compliance fit.")
+        st.success("No major improvement areas detected. Strong overall fit!")
     else:
         for _, row in risks.iterrows():
             st.warning(f"{row['Skill']} → Development opportunity")
-
