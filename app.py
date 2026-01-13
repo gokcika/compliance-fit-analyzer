@@ -30,8 +30,10 @@ st.set_page_config(page_title="TalentFit", layout="wide")
 st.title("TalentFit: Career Fit Analyzer")
 st.caption("Analyze your CV against a fixed Siemens Healthineers job description and highlight strengths & improvement areas")
 
-# Add a key to avoid DuplicateElementId
-cv_file = st.file_uploader("Upload CV (PDF)", type=["pdf"], key="cv_upload")
+# -----------------------------
+# File uploader with unique key
+# -----------------------------
+cv_file = st.file_uploader("Upload CV (PDF)", type=["pdf"], key="cv_upload_unique")
 
 # -----------------------------
 # Fixed Job Description (Python-friendly)
@@ -160,3 +162,4 @@ if cv_file:
     else:
         for _, row in risks.iterrows():
             st.warning(f"{row['Skill']} → Development opportunity")
+
