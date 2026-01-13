@@ -27,97 +27,48 @@ def calculate_similarity(text1, text2):
 st.set_page_config(page_title="TalentFit", layout="wide")
 
 st.title("TalentFit: Career Fit Analyzer")
-st.caption("Analyze your CV against job descriptions and highlight strengths & improvement areas")
+st.caption("Analyze your CV against a fixed Siemens Healthineers job description and highlight strengths & improvement areas")
 
-col1, col2 = st.columns(2)
+cv_file = st.file_uploader("Upload CV (PDF)", type=["pdf"])
 
-with col1:
-    cv_file = st.file_uploader("Upload CV (PDF)", type=["pdf"])
+# -----------------------------
+# Fixed Job Description (hidden, no input required)
+# -----------------------------
+job_desc = """
+Do you want to help create the future of healthcare? Our name, Siemens Healthineers, was selected to honor our people who dedicate their energy and passion to this cause. It reflects their pioneering spirit combined with our long history of engineering in the ever-evolving healthcare industry.
 
-with col2:
-    job_desc = st.text_area("Paste Job Description")
+We offer you a flexible and dynamic environment with opportunities to go beyond your comfort zone in order to grow personally and professionally. Sounds interesting?
 
-if cv_file and job_desc:
-    cv_text = read_pdf(cv_file)
+Then come and join our global team as Compliance & Digital Transformation Expert (f/m/d), to drive digital transformation in compliance and help shape the future of risk management.
 
-    # -----------------------------
-    # Updated Skill keywords
-    # -----------------------------
-    skills = {
-        "Compliance & Risk Management": [
-            "compliance", "risk", "ethics", "technical compliance", "sustainability", "framework", "governance"
-        ],
-        "Digitalization": [
-            "digital", "digitalization", "automation", "system", "tool", "IT", "technology", "modernize", "innovation"
-        ],
-        "M&A & Due Diligence": [
-            "merger", "acquisition", "due diligence", "integration", "transaction"
-        ],
-        "Global Experience": [
-            "global", "regional", "international", "cross-border", "headquarters", "collaboration"
-        ],
-        "Project Management": [
-            "project", "program", "coordination", "initiative", "implementation", "ownership", "priorities", "dynamic environment"
-        ],
-        "Training": [
-            "training", "workshop", "education", "knowledge exchange", "learning", "development"
-        ],
-        "Regulatory Knowledge": [
-            "regulation", "FCPA", "sanctions", "compliance", "laws", "medtech", "framework"
-        ]
-    }
+Choose the best place for your work – Within the scope of this position, it is possible, in consultation with your manager, to work mobile (within Germany) up to an average volume of 60% of the respective working hours.
 
-    results = []
+Even more flexibility? Mobile working from abroad is possible for up to 30 days a year under certain conditions and in selected countries.
 
-    # -----------------------------
-    # Calculate skill match
-    # -----------------------------
-    for skill, keywords in skills.items():
-        cv_part = " ".join([k for k in keywords if k.lower() in cv_text.lower()])
-        jd_part = " ".join([k for k in keywords if k.lower() in job_desc.lower()])
-        score = calculate_similarity(cv_part, jd_part) if cv_part and jd_part else 40
-        results.append([skill, score])
+This position can be filled anywhere in the world where Siemens Healthineers is present.
 
-    df = pd.DataFrame(results, columns=["Skill", "Match %"])
+Your tasks and responsibilities:
 
-    overall_score = round(df["Match %"].mean(), 2)
+You take ownership of developing and executing the compliance department’s digitalization strategy.
+You lead and support key digitization projects, ensuring successful implementation in collaboration with global stakeholders.
+You identify compliance needs together with Governance Owners and Regional Compliance Officers and turn them into impactful change projects.
+You assess internal risk management processes, analyze compliance trends (e.g., technical compliance, ethics, sustainability), and develop measures to minimize risk.
+You contribute to M&A transactions from due diligence to integration and support continuous improvement of the Siemens Healthineers Compliance System.
+You foster knowledge exchange with compliance colleagues worldwide and drive innovation in compliance training.
 
-    # -----------------------------
-    # Display Results
-    # -----------------------------
-    st.metric("Overall Match", f"{overall_score} %")
+Your qualifications and experience:
 
-    fig = px.bar(
-        df,
-        x="Skill",
-        y="Match %",
-        title="Skill Match Overview",
-        range_y=[0, 100]
-    )
-    st.plotly_chart(fig, use_container_width=True)
+You have a degree in Compliance, IT, Business Administration, or a related field.
+You have professional experience in compliance and/or IT and/or digitalization projects.
+You have experience in project management and working in international environments.
+Ideally, you have a strong understanding of risk management and compliance frameworks.
 
-    # -----------------------------
-    # Highlight strengths
-    # -----------------------------
-    st.subheader("Why Hire Me? (Key Strengths)")
+Your attributes and skills:
 
-    strengths = df[df["Match %"] >= 70]
-
-    if strengths.empty:
-        st.info("No particular strengths detected. Consider improving your skills.")
-    else:
-        for _, row in strengths.iterrows():
-            st.success(f"{row['Skill']} → Strong match")
-
-    # -----------------------------
-    # Improvement Areas
-    # -----------------------------
-    st.subheader("Improvement Areas")
-
-    risks = df[df["Match %"] < 70]
-
-    if risks.empty:
-        st.success("No major improvement areas detected. Strong overall fit!")
-    else:
-        for _, row in risks.iterrows():
-            st.warning(f"{row['Skill']} → Development opportunity")
+You are proficient in English, enabling you to collaborate effectively with global teams and communicate confidently across regions and headquarters.
+You are confident in decision-making under uncertainty and thrive in dynamic environments.
+You have a strong aptitude for new technologies, digitalization, and automation, enabling you to lead initiatives that modernize compliance processes and systems.
+You demonstrate excellent analytical and critical thinking skills.
+You communicate effectively and build trust across diverse teams ensuring smooth collaboration with governance owners, regional compliance officers, and headquarters as well as IT stakeholders.
+You work independently with an entrepreneurial mindset, taking ownership of projects and managing multiple priorities in a global setting.
+You are a team player wi
