@@ -40,19 +40,38 @@ with col2:
 if cv_file and job_desc:
     cv_text = read_pdf(cv_file)
 
-    # Skill keywords
+    # -----------------------------
+    # Updated Skill keywords
+    # -----------------------------
     skills = {
-        "Compliance & Risk Management": ["compliance", "risk", "ethics"],
-        "Digitalization": ["digital", "automation", "system", "tool"],
-        "M&A & Due Diligence": ["merger", "acquisition", "due diligence"],
-        "Global Experience": ["global", "regional", "international"],
-        "Project Management": ["project", "program", "coordination"],
-        "Training": ["training", "workshop", "education"],
-        "Regulatory Knowledge": ["regulation", "FCPA", "sanctions"]
+        "Compliance & Risk Management": [
+            "compliance", "risk", "ethics", "technical compliance", "sustainability", "framework", "governance"
+        ],
+        "Digitalization": [
+            "digital", "digitalization", "automation", "system", "tool", "IT", "technology", "modernize", "innovation"
+        ],
+        "M&A & Due Diligence": [
+            "merger", "acquisition", "due diligence", "integration", "transaction"
+        ],
+        "Global Experience": [
+            "global", "regional", "international", "cross-border", "headquarters", "collaboration"
+        ],
+        "Project Management": [
+            "project", "program", "coordination", "initiative", "implementation", "ownership", "priorities", "dynamic environment"
+        ],
+        "Training": [
+            "training", "workshop", "education", "knowledge exchange", "learning", "development"
+        ],
+        "Regulatory Knowledge": [
+            "regulation", "FCPA", "sanctions", "compliance", "laws", "medtech", "framework"
+        ]
     }
 
     results = []
 
+    # -----------------------------
+    # Calculate skill match
+    # -----------------------------
     for skill, keywords in skills.items():
         cv_part = " ".join([k for k in keywords if k.lower() in cv_text.lower()])
         jd_part = " ".join([k for k in keywords if k.lower() in job_desc.lower()])
