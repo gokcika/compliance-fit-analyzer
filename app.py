@@ -113,7 +113,7 @@ skills = {
             "onboard", "onboarding", "curriculum", "program design", "skill development", "capacity building",
             "knowledge transfer", "knowledge sharing", "train the trainer", "upskilling"
         ],
-        "weight": 1.5  
+        "weight": 1.5 
     },
     "Regulatory Knowledge": {
         "keywords": ["regulation", "FCPA", "sanctions", "compliance", "laws", "medtech", "framework"],
@@ -143,13 +143,17 @@ if cv_file:
         results.append([skill, round(weighted_score, 2)])
 
     df = pd.DataFrame(results, columns=["Skill", "Match %"])
+    
+    # Sort by Match % descending (highest to lowest)
+    df = df.sort_values("Match %", ascending=False).reset_index(drop=True)
+    
     overall_score = round(df["Match %"].mean(), 2)
 
     # -----------------------------
     # Display Results - Two Column Layout
     # -----------------------------
     st.divider()
-    col1, col2 = st.columns(2)
+    col1, col2 = col3 = st.columns(3)
     
     with col1:
         st.metric("Overall Match", f"{overall_score}%")
@@ -157,20 +161,40 @@ if cv_file:
     with col2:
         strong_count = len(df[df["Match %"] >= 70])
         st.metric("Strong Matches (≥70%)", f"{strong_count}/{len(df)}")
+    
+    with col3:
+        top_skill = df.iloc[0]
+        st.metric("Top Skill", f"{top_skill['Skill'][:20]}...", f"{top_skill['Match %']}%")
 
     # -----------------------------
-    # Colored Bar Chart
+    # Colored Bar Chart (sorted)
     # -----------------------------
     fig = px.bar(
         df,
         x="Skill",
         y="Match %",
-        title="Skill Match Overview",
+        title="Skill Match Overview (Ranked)",
         range_y=[0, 100],
         color=df["Match %"].apply(lambda x: "Strong" if x >= 70 else "Needs Work"),
         color_discrete_map={"Strong": "#00CC66", "Needs Work": "#FF9933"}
     )
     st.plotly_chart(fig, use_container_width=True)
+
+    # -----------------------------
+    # Ranked Skills Table
+    # -----------------------------
+    st.subheader("📊 Skills Ranked by Match")
+    for idx, row in df.iterrows():
+        col1, col2, col3 = st.columns([0.5, 3, 1])
+        with col1:
+            st.markdown(f"**#{idx+1}**")
+        with col2:
+            st.markdown(f"**{row['Skill']}**")
+        with col3:
+            if row['Match %'] >= 70:
+                st.success(f"{row['Match %']}%")
+            else:
+                st.warning(f"{row['Match %']}%")
 
     # -----------------------------
     # Highlight strengths
