@@ -83,29 +83,62 @@ job_desc = (
 )
 
 # -----------------------------
-# Skill keywords
+# Skill keywords - UPDATED
 # -----------------------------
 skills = {
     "Compliance & Risk Management": [
-        "compliance", "risk", "ethics", "technical compliance", "sustainability", "framework", "governance"
+        "compliance", "risk", "ethics", 
+        "framework", "governance", "internal control", "audit", "policy", 
+        "procedure", "standard", "guideline", "monitoring", "assessment",
+        "risk mitigation", "risk management", "risk analysis", "compliance system"
     ],
+    
     "Digitalization": [
-        "digital", "digitalization", "automation", "system", "tool", "IT", "technology", "modernize", "innovation"
+        "digital", "digitalization", "digitization", "automation", "system", 
+        "tool", "IT", "technology", "modernize", "innovation", "software",
+        "platform", "implementation", "automated", "real-time", "workflow",
+        "process improvement", "digital transformation", "KYC", "BPC", "SPODOM",
+        "tracking system", "formula", "solution"
     ],
+    
     "M&A & Due Diligence": [
-        "merger", "acquisition", "due diligence", "integration", "transaction"
+        "merger", "acquisition", "due diligence", "integration", "transaction",
+        "M&A", "consolidation", "takeover", "deal", "valuation", "assessment",
+        "post-merger", "synergy", "restructuring", "carve-out", "amalgamation",
+        "merger agreement", "target entities", "workstream", "transaction management",
+        "post-acquisition", "legal counsel"
     ],
+    
     "Global Experience": [
-        "global", "regional", "international", "cross-border", "headquarters", "collaboration"
+        "global", "regional", "international", "cross-border", "headquarters", 
+        "collaboration", "multinational", "worldwide", "cross-cultural",
+        "remote", "distributed", "multi-region","cross-functional"
     ],
+    
     "Project Management": [
-        "project", "program", "coordination", "initiative", "implementation", "ownership", "priorities", "dynamic environment"
+        "project", "program", "coordination", "initiative", "implementation", 
+        "ownership", "priorities", "dynamic environment", "stakeholder",
+        "PMO", "agile", "milestone", "deliverable", "timeline",
+        "execution", "resource", "planning", "coordinating", "manage multiple",
+        "simultaneous", "fast-paced", "competing priorities", "project delivery"
     ],
+    
     "Training": [
-        "training", "workshop", "education", "knowledge exchange", "learning", "development"
+        "training", "workshop", "education", "knowledge exchange", "learning", 
+        "development", "teaching", "coaching", "mentoring", "onboarding",
+        "curriculum", "instruction", "facilitation", "presentation", "seminar",
+        "e-learning", "certification", "facilitate", "session", "educational",
+        "training programs", "training materials", "capability-building",
+        "knowledge transfer", "train", "deliver", "instructor", "training delivery",
+        "awareness", "customized training"
     ],
+    
     "Regulatory Knowledge": [
-        "regulation", "FCPA", "sanctions", "compliance", "laws", "medtech", "framework"
+        "regulation", "regulatory", "FCPA", "compliance", "laws", 
+        "medtech", "framework", "legislation", "legal", "statute",
+        "directive", "ordinance", "code", "anti-corruption", "anti-bribery",
+        "healthcare regulation", "medical device",
+        "UK Bribery Act", "transparency", "healthcare transparency"
     ]
 }
 
