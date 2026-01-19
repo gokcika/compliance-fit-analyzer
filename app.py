@@ -25,13 +25,11 @@ def read_pdf(file):
 
 def calculate_similarity_simple(cv_text, jd_text, keywords):
     """
-    Simple keyword-based scoring (original approach)
-    No phrase weighting, no frequency caps
+    Simple keyword-based scoring
     """
     cv_lower = cv_text.lower()
     jd_lower = jd_text.lower()
     
-    # Just collect keywords that appear (with their frequency)
     cv_keywords = []
     jd_keywords = []
     
@@ -39,7 +37,6 @@ def calculate_similarity_simple(cv_text, jd_text, keywords):
         cv_count = cv_lower.count(keyword.lower())
         jd_count = jd_lower.count(keyword.lower())
         
-        # Add keyword for each occurrence (no cap)
         cv_keywords.extend([keyword] * cv_count)
         jd_keywords.extend([keyword] * jd_count)
     
@@ -93,37 +90,86 @@ job_desc = (
 )
 
 # ----------------------------- 
-# SIMPLE SKILL DEFINITIONS (flat keyword lists)
+# EXPANDED SKILL DEFINITIONS
 # ----------------------------- 
 
-skills_simple = {
+skills_expanded = {
     "Compliance & Risk Management": [
-        "compliance", "risk", "ethics", "technical compliance", "sustainability", 
-        "framework", "governance", "risk management", "control", "oversight", "monitoring"
+        "compliance", "compliant", "comply",
+        "risk", "risks", "risk management", "risk assessment", "risk mitigation",
+        "ethics", "ethical", "ethics compliance",
+        "technical compliance", "sustainability", "sustainable",
+        "framework", "frameworks", 
+        "governance", "corporate governance", "govern",
+        "control", "controls", "oversight", "monitoring", "monitor"
     ],
     "Digitalization": [
-        "digital", "digitalization", "automation", "system", "tool", "IT", 
-        "technology", "modernize", "innovation", "digitization"
+        "digital", "digitally", "digitalization", "digitization", "digitalize",
+        "automation", "automated", "automate", "automating",
+        "system", "systems", 
+        "tool", "tools", 
+        "IT", "information technology",
+        "technology", "technologies", "technological", "tech",
+        "modernize", "modernization", "modernizing",
+        "innovation", "innovative", "innovate"
     ],
     "M&A & Due Diligence": [
-        "merger", "acquisition", "due diligence", "integration", "transaction",
-        "M&A", "target", "deal", "consolidation"
+        "merger", "mergers", "merge", "merging",
+        "acquisition", "acquisitions", "acquire", "acquired", "acquiring",
+        "due diligence", "diligence",
+        "integration", "integrate", "integrating", "post-merger integration",
+        "transaction", "transactions", "transactional",
+        "M&A", "M & A",
+        "target", "target company", "target entity",
+        "deal", "deals",
+        "consolidation", "consolidate",
+        "amalgamation", "amalgamate",
+        "restructuring", "restructure",
+        "pre-acquisition", "post-acquisition"
     ],
     "Global Experience": [
-        "global", "regional", "international", "cross-border", "headquarters", 
-        "collaboration", "worldwide"
+        "global", "globally", "global team",
+        "regional", "region", "regions",
+        "international", "internationally", "international environment",
+        "cross-border", "cross border",
+        "headquarters", "HQ",
+        "collaboration", "collaborate", "collaborative",
+        "worldwide", "world-wide"
     ],
     "Project Management": [
-        "project", "program", "coordination", "initiative", "implementation", 
-        "ownership", "priorities", "dynamic environment", "dynamic"
+        "project", "projects", 
+        "program", "programs", "programme",
+        "coordination", "coordinate", "coordinating", "coordinator",
+        "initiative", "initiatives",
+        "implementation", "implement", "implementing", "implemented",
+        "ownership", "own", "owned",
+        "priorities", "prioritize", "prioritization", "priority",
+        "dynamic environment", "dynamic", "fast-paced",
+        "led", "lead", "leading",
+        "manage", "managed", "managing", "management",
+        "execution", "execute", "delivery", "deliver"
     ],
     "Training": [
-        "training", "workshop", "education", "knowledge exchange", "learning", 
-        "development", "mentoring", "coaching"
+        "training", "trainings", "trained", "train", "trainer",
+        "workshop", "workshops",
+        "education", "educational", "educate", "educator",
+        "knowledge exchange", "knowledge sharing", "knowledge transfer",
+        "learning", "learn", "learning and development",
+        "development", "develop", "developing", "developer",
+        "mentoring", "mentor", "mentored",
+        "coaching", "coach", "coached",
+        "capability building", "capability", "upskilling", "skill building",
+        "teaching", "teach"
     ],
     "Regulatory Knowledge": [
-        "regulation", "FCPA", "sanctions", "compliance", "laws", "medtech", 
-        "framework", "regulatory"
+        "regulation", "regulations", "regulatory", "regulate",
+        "FCPA", "Foreign Corrupt Practices Act",
+        "sanctions", "sanction", "sanctioned",
+        "compliance", "compliant",
+        "laws", "law", "legal",
+        "medtech", "medical device", "medical technology",
+        "framework", "frameworks",
+        "requirement", "requirements", "required"
     ]
 }
 
@@ -131,9 +177,9 @@ skills_simple = {
 # STREAMLIT APP
 # ----------------------------- 
 
-st.set_page_config(page_title="TalentFit Simple", layout="wide")
-st.title("🎯 TalentFit: Simple Keyword Analyzer")
-st.caption("Keyword frequency-based scoring (no phrase weighting)")
+st.set_page_config(page_title="TalentFit Enhanced", layout="wide")
+st.title("🎯 TalentFit: Career Fit Analyzer")
+st.caption("Analyze your CV against Siemens Healthineers job requirements")
 
 # File uploader
 cv_file = st.file_uploader("Upload CV (PDF)", type=["pdf"], key="cv_upload")
@@ -151,7 +197,7 @@ if cv_file:
     with st.spinner("Analyzing..."):
         results = []
         
-        for skill, keywords in skills_simple.items():
+        for skill, keywords in skills_expanded.items():
             score = calculate_similarity_simple(cv_text, job_desc, keywords)
             results.append([skill, score])
     
@@ -172,7 +218,7 @@ if cv_file:
         df, 
         x="Skill", 
         y="Match %",
-        title="Skill Match Overview (Simple Keyword Scoring)",
+        title="Skill Match Overview",
         range_y=[0, 100],
         color=df["Match %"].apply(lambda x: "Strong" if x >= 70 else "Needs Work"),
         color_discrete_map={"Strong": "#00CC66", "Needs Work": "#FF9933"}
@@ -185,7 +231,7 @@ if cv_file:
     strengths = df[df["Match %"] >= 70]
     
     if strengths.empty:
-        st.info("No skills above 70% threshold yet.")
+        st.info("Focus on improvement areas below.")
     else:
         for _, row in strengths.iterrows():
             st.success(f"**{row['Skill']}** → {row['Match %']}%")
@@ -195,38 +241,21 @@ if cv_file:
     improvements = df[df["Match %"] < 70]
     
     if improvements.empty:
-        st.success("All skills above 70%!")
+        st.success("🎉 All skills above 70%!")
     else:
         for _, row in improvements.iterrows():
             gap = 70 - row["Match %"]
             st.warning(f"**{row['Skill']}** → {row['Match %']}% (need +{gap:.1f}%)")
     
-    # Show keyword counts
-    with st.expander("📊 Keyword Analysis Details"):
-        for skill, keywords in skills_simple.items():
-            st.write(f"**{skill}:**")
-            cv_lower = cv_text.lower()
-            keyword_counts = []
-            for kw in keywords:
-                count = cv_lower.count(kw.lower())
-                if count > 0:
-                    keyword_counts.append(f"{kw} ({count}x)")
-            
-            if keyword_counts:
-                st.write(", ".join(keyword_counts))
-            else:
-                st.write("No keywords found")
-            st.write("")
-    
     # Download
     st.divider()
     csv = df.to_csv(index=False)
     st.download_button(
-        "📥 Download Results",
+        "📥 Download Results as CSV",
         csv,
-        "cv_analysis_simple.csv",
+        "cv_analysis.csv",
         "text/csv"
     )
 
 else:
-    st.info("👆 Upload your CV to begin")
+    st.info("👆 Upload your CV (PDF format) to begin analysis")
