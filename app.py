@@ -32,10 +32,10 @@ skills_balanced = {
     },
     
     "Digitalization": {
-        "core": ["digitalization", "digital transformation", "digitization"],  # Rare, high value
+        "core": ["digitalization", "digital transformation", "digitization"],
         "primary": ["automation", "automated", "automate"],
         "secondary": ["digital", "modernize", "innovation", "digitalize"],
-        "generic": ["technology", "IT", "system", "tool"],  # Common, low weight
+        "generic": ["technology", "IT", "system", "tool"],
         "threshold": 65
     },
     
@@ -79,8 +79,8 @@ skills_balanced = {
     
     "Regulatory Knowledge": {
         "core": ["regulatory framework", "regulatory requirement", "regulatory compliance"],
-        "specific": ["FCPA", "sanctions", "OFAC", "SFDA"],  # Specific regulations
-        "primary": ["regulation", "regulatory", "compliance requirement"],
+        "specific": ["FCPA", "Foreign Corrupt Practices Act"],
+        "primary": ["regulation", "regulations", "regulatory", "compliance requirement"],
         "secondary": ["law", "legal requirement"],
         "threshold": 75
     }
@@ -96,16 +96,15 @@ def calculate_balanced_score(cv_text, jd_text, skill_config, skill_name):
     cv_keywords = []
     jd_keywords = []
     
-    # Weight hierarchy
     weight_map = {
-        "core": 5,           # Highest - rare, high-value terms
-        "specific": 4,       # Specific named regulations/tools
+        "core": 5,
+        "specific": 4,
         "ma_terms": 3,
-        "dd_equivalents": 4, # Due diligence variants = critical
-        "pm_actions": 4,     # Action phrases
+        "dd_equivalents": 4,
+        "pm_actions": 4,
         "primary": 2,
         "secondary": 1,
-        "generic": 0.5,      # Common words - low weight
+        "generic": 0.5,
         "verbs": 1,
         "context": 1
     }
@@ -119,13 +118,12 @@ def calculate_balanced_score(cv_text, jd_text, skill_config, skill_name):
         
         weight = weight_map.get(category, 1)
         
-        # Frequency cap based on weight (higher weight = lower cap to prevent inflation)
         if weight >= 4:
             cap = 8
         elif weight >= 2:
             cap = 10
         else:
-            cap = 6  # Generic words capped low
+            cap = 6
         
         for kw in keywords:
             cv_count = cv_lower.count(kw.lower())
@@ -134,7 +132,6 @@ def calculate_balanced_score(cv_text, jd_text, skill_config, skill_name):
             cv_keywords.extend([kw] * min(int(cv_count * weight), cap))
             jd_keywords.extend([kw] * min(int(jd_count * weight), cap))
     
-    # Moderate context bonuses (not over-aggressive)
     if skill_name == "M&A & Due Diligence":
         paragraphs = cv_text.split('\n')
         bonus_count = 0
@@ -146,18 +143,16 @@ def calculate_balanced_score(cv_text, jd_text, skill_config, skill_name):
             has_legal_dd = "legal due diligence" in para_lower or "legal diligence" in para_lower
             has_compliance = any(term in para_lower for term in ["compliance", "regulatory"])
             
-            # Bonus only for meaningful co-occurrence
             if has_ma and has_legal_dd:
-                bonus_count += 2  # Legal DD in M&A context = valid
+                bonus_count += 2
             
-            if has_ma and has_compliance and bonus_count < 4:  # Cap total bonus
+            if has_ma and has_compliance and bonus_count < 4:
                 bonus_count += 1
         
         cv_keywords.extend(["ma_context_bonus"] * bonus_count)
         jd_keywords.extend(["ma_context_bonus"] * 2)
     
     if skill_name == "Project Management":
-        # Check for action phrases (not just co-occurrence)
         pm_phrases = [
             "manage project", "lead project", "coordinate project",
             "manage program", "lead program", "manage initiative"
@@ -185,7 +180,7 @@ def calculate_balanced_score(cv_text, jd_text, skill_config, skill_name):
         return 40
 
 # ----------------------------- 
-# JOB DESCRIPTION (same)
+# JOB DESCRIPTION
 # ----------------------------- 
 
 job_desc = (
@@ -225,7 +220,7 @@ job_desc = (
 
 st.set_page_config(page_title="TalentFit", layout="wide")
 st.title("🎯 TalentFit: Career Fit Analyzer")
-st.caption("Balanced semantic analysis with proper keyword weighting")
+st.caption("Analyze your CV against Siemens Healthineers job requirements")
 
 cv_file = st.file_uploader("Upload CV (PDF)", type=["pdf"], key="cv_upload")
 
