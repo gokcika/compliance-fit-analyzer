@@ -11,111 +11,25 @@ import PyPDF2
 
 def read_pdf(file):
     """Extract text from PDF file"""
-    reader = PyPDF2.PdfReader(file)
-    text = ""
-    for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text += page_text + " "
-    return text
-
-# ----------------------------- 
-# JOB DESCRIPTION (Fixed)
-# ----------------------------- 
-
-job_desc = (
-    "Do you want to help create the future of healthcare? Our name, Siemens Healthineers, "
-    "was selected to honor our people who dedicate their energy and passion to this cause. "
-    "It reflects their pioneering spirit combined with our long history of engineering "
-    "in the ever-evolving healthcare industry.\n\n"
-    "We offer you a flexible and dynamic environment with opportunities to go beyond your comfort zone "
-    "in order to grow personally and professionally. Sounds interesting?\n\n"
-    "Then come and join our global team as Compliance & Digital Transformation Expert (f/m/d), "
-    "to drive digital transformation in compliance and help shape the future of risk management.\n\n"
-    "Choose the best place for your work – Within the scope of this position, it is possible, in consultation "
-    "with your manager, to work mobile (within Germany) up to an average volume of 60% of the respective working hours.\n\n"
-    "Even more flexibility? Mobile working from abroad is possible for up to 30 days a year under certain conditions "
-    "and in selected countries.\n\n"
-    "This position can be filled anywhere in the world where Siemens Healthineers is present.\n\n"
-    "Your tasks and responsibilities:\n"
-    "- You take ownership of developing and executing the compliance department's digitalization strategy.\n"
-    "- You lead and support key digitization projects, ensuring successful implementation in collaboration with global stakeholders.\n"
-    "- You identify compliance needs together with Governance Owners and Regional Compliance Officers and turn them into impactful change projects.\n"
-    "- You assess internal risk management processes, analyze compliance trends (e.g., technical compliance, ethics, sustainability), and develop measures to minimize risk.\n"
-    "- You contribute to M&A transactions from due diligence to integration and support continuous improvement of the Siemens Healthineers Compliance System.\n"
-    "- You foster knowledge exchange with compliance colleagues worldwide and drive innovation in compliance training.\n\n"
-    "Your qualifications and experience:\n"
-    "- You have a degree in Compliance, IT, Business Administration, or a related field.\n"
-    "- You have professional experience in compliance and/or IT and/or digitalization projects.\n"
-    "- You have experience in project management and working in international environments.\n"
-    "- Ideally, you have a strong understanding of risk management and compliance frameworks.\n\n"
-    "Your attributes and skills:\n"
-    "- You are proficient in English, enabling you to collaborate effectively with global teams and communicate confidently across regions and headquarters.\n"
-    "- You are confident in decision-making under uncertainty and thrive in dynamic environments.\n"
-    "- You have a strong aptitude for new technologies, digitalization, and automation, enabling you to lead initiatives that modernize compliance processes and systems.\n"
-    "- You demonstrate excellent analytical and critical thinking skills.\n"
-    "- You communicate effectively and build trust across diverse teams ensuring smooth collaboration with governance owners, regional compliance officers, and headquarters as well as IT stakeholders.\n"
-    "- You work independently with an entrepreneurial mindset, taking ownership of projects and managing multiple priorities in a global setting.\n"
-    "- You are a team player with strong leadership and interpersonal skills."
-)
-
-# ----------------------------- 
-# ENHANCED SKILL DEFINITIONS
-# ----------------------------- 
-
-skills_enhanced = {
-    "Compliance & Risk Management": {
-        "phrases": ["risk management", "compliance framework", "governance system", "risk assessment"],
-        "primary": ["compliance", "risk", "governance", "ethics"],
-        "secondary": ["framework", "control", "oversight", "monitoring", "sustainability"],
-        "threshold": 75
-    },
-    "Digitalization": {
-        "phrases": ["digital transformation", "automated system", "technology-driven solution", "digitalization project"],
-        "primary": ["digitalization", "automation", "digital transformation"],
-        "secondary": ["digital", "system", "IT", "technology", "modernize", "innovation", "tool"],
-        "threshold": 65
-    },
-    "M&A & Due Diligence": {
-        "phrases": ["due diligence", "merger and acquisition", "post-merger integration", "transaction lifecycle", "M&A"],
-        "primary": ["merger", "acquisition", "due diligence", "transaction"],
-        "secondary": ["integration", "target", "consolidation", "deal"],
-        "threshold": 60
-    },
-    "Global Experience": {
-        "phrases": ["cross-border", "international collaboration", "global team"],
-        "primary": ["global", "international", "regional"],
-        "secondary": ["cross-border", "headquarters", "collaboration"],
-        "threshold": 70
-    },
-    "Project Management": {
-        "phrases": ["project management", "dynamic environment", "cross-functional", "initiative ownership"],
-        "primary": ["project", "program", "initiative"],
-        "secondary": ["coordination", "implementation", "ownership", "priorities", "dynamic"],
-        "threshold": 70
-    },
-    "Training": {
-        "phrases": ["training program", "knowledge exchange", "capability building", "workshop"],
-        "primary": ["training", "workshop", "education", "knowledge exchange"],
-        "secondary": ["learning", "development", "mentoring", "coaching"],
-        "threshold": 65
-    },
-    "Regulatory Knowledge": {
-        "phrases": ["regulatory framework", "compliance requirement", "FCPA"],
-        "primary": ["regulation", "FCPA", "sanctions", "framework"],
-        "secondary": ["compliance", "laws", "regulatory", "medtech"],
-        "threshold": 75
-    }
-}
-
-# ----------------------------- 
-# ENHANCED SCORING FUNCTION
-# ----------------------------- 
+    try:
+        reader = PyPDF2.PdfReader(file)
+        text = ""
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + " "
+        return text
+    except Exception as e:
+        st.error(f"Error reading PDF: {e}")
+        return ""
 
 def calculate_enhanced_score(cv_text, jd_text, skill_config):
     """
     Enhanced scoring with phrases, weighting, and frequency
     """
+    if not cv_text or not jd_text:
+        return 40
+    
     cv_lower = cv_text.lower()
     jd_lower = jd_text.lower()
     
@@ -146,20 +60,20 @@ def calculate_enhanced_score(cv_text, jd_text, skill_config):
     cv_part = " ".join(cv_parts)
     jd_part = " ".join(jd_parts)
     
+    # If no keywords found, return low score
     if not cv_part or not jd_part:
         return 40
     
     try:
-        vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
-        tfidf = vectorizer.fit_transform([cv_part, jd_part])
-        score = cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
-        return round(score * 100, 2)
-    except:
+        # Create vectorizer and calculate similarity
+        vec = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
+        tfidf_matrix = vec.fit_transform([cv_part, jd_part])
+        similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+        score = round(similarity * 100, 2)
+        return score
+    except Exception as e:
+        st.warning(f"Scoring error for skill: {e}")
         return 40
-
-# ----------------------------- 
-# GAP ANALYSIS FUNCTION
-# ----------------------------- 
 
 def analyze_gaps(cv_text, skill_config):
     """
@@ -197,7 +111,91 @@ def analyze_gaps(cv_text, skill_config):
     return analysis
 
 # ----------------------------- 
-# STREAMLIT UI
+# JOB DESCRIPTION
+# ----------------------------- 
+
+job_desc = (
+    "Do you want to help create the future of healthcare? Our name, Siemens Healthineers, "
+    "was selected to honor our people who dedicate their energy and passion to this cause. "
+    "It reflects their pioneering spirit combined with our long history of engineering "
+    "in the ever-evolving healthcare industry.\n\n"
+    "We offer you a flexible and dynamic environment with opportunities to go beyond your comfort zone "
+    "in order to grow personally and professionally. Sounds interesting?\n\n"
+    "Then come and join our global team as Compliance & Digital Transformation Expert (f/m/d), "
+    "to drive digital transformation in compliance and help shape the future of risk management.\n\n"
+    "Your tasks and responsibilities:\n"
+    "- You take ownership of developing and executing the compliance department's digitalization strategy.\n"
+    "- You lead and support key digitization projects, ensuring successful implementation in collaboration with global stakeholders.\n"
+    "- You identify compliance needs together with Governance Owners and Regional Compliance Officers and turn them into impactful change projects.\n"
+    "- You assess internal risk management processes, analyze compliance trends (e.g., technical compliance, ethics, sustainability), and develop measures to minimize risk.\n"
+    "- You contribute to M&A transactions from due diligence to integration and support continuous improvement of the Siemens Healthineers Compliance System.\n"
+    "- You foster knowledge exchange with compliance colleagues worldwide and drive innovation in compliance training.\n\n"
+    "Your qualifications and experience:\n"
+    "- You have a degree in Compliance, IT, Business Administration, or a related field.\n"
+    "- You have professional experience in compliance and/or IT and/or digitalization projects.\n"
+    "- You have experience in project management and working in international environments.\n"
+    "- Ideally, you have a strong understanding of risk management and compliance frameworks.\n\n"
+    "Your attributes and skills:\n"
+    "- You are proficient in English, enabling you to collaborate effectively with global teams.\n"
+    "- You are confident in decision-making under uncertainty and thrive in dynamic environments.\n"
+    "- You have a strong aptitude for new technologies, digitalization, and automation.\n"
+    "- You demonstrate excellent analytical and critical thinking skills.\n"
+    "- You communicate effectively and build trust across diverse teams.\n"
+    "- You work independently with an entrepreneurial mindset, taking ownership of projects.\n"
+    "- You are a team player with strong leadership and interpersonal skills."
+)
+
+# ----------------------------- 
+# SKILL DEFINITIONS
+# ----------------------------- 
+
+skills_enhanced = {
+    "Compliance & Risk Management": {
+        "phrases": ["risk management", "compliance framework", "governance system", "risk assessment"],
+        "primary": ["compliance", "risk", "governance", "ethics"],
+        "secondary": ["framework", "control", "oversight", "monitoring", "sustainability"],
+        "threshold": 75
+    },
+    "Digitalization": {
+        "phrases": ["digital transformation", "automated system", "technology-driven solution", "digitalization project"],
+        "primary": ["digitalization", "automation", "digital transformation"],
+        "secondary": ["digital", "system", "IT", "technology", "modernize", "innovation", "tool"],
+        "threshold": 65
+    },
+    "M&A & Due Diligence": {
+        "phrases": ["due diligence", "merger and acquisition", "post-merger integration", "transaction lifecycle"],
+        "primary": ["merger", "acquisition", "due diligence", "transaction"],
+        "secondary": ["integration", "target", "consolidation", "deal"],
+        "threshold": 60
+    },
+    "Global Experience": {
+        "phrases": ["cross-border", "international collaboration", "global team"],
+        "primary": ["global", "international", "regional"],
+        "secondary": ["cross-border", "headquarters", "collaboration"],
+        "threshold": 70
+    },
+    "Project Management": {
+        "phrases": ["project management", "dynamic environment", "cross-functional", "initiative ownership"],
+        "primary": ["project", "program", "initiative"],
+        "secondary": ["coordination", "implementation", "ownership", "priorities", "dynamic"],
+        "threshold": 70
+    },
+    "Training": {
+        "phrases": ["training program", "knowledge exchange", "capability building", "workshop"],
+        "primary": ["training", "workshop", "education", "knowledge exchange"],
+        "secondary": ["learning", "development", "mentoring", "coaching"],
+        "threshold": 65
+    },
+    "Regulatory Knowledge": {
+        "phrases": ["regulatory framework", "compliance requirement", "FCPA"],
+        "primary": ["regulation", "FCPA", "sanctions", "framework"],
+        "secondary": ["compliance", "laws", "regulatory", "medtech"],
+        "threshold": 75
+    }
+}
+
+# ----------------------------- 
+# STREAMLIT APP
 # ----------------------------- 
 
 st.set_page_config(page_title="TalentFit Enhanced", layout="wide")
@@ -209,21 +207,28 @@ cv_file = st.file_uploader("Upload CV (PDF)", type=["pdf"], key="cv_upload")
 
 if cv_file:
     # Read CV
-    cv_text = read_pdf(cv_file)
+    with st.spinner("Reading CV..."):
+        cv_text = read_pdf(cv_file)
+    
+    if not cv_text:
+        st.error("Could not extract text from PDF. Please check the file.")
+        st.stop()
     
     # Calculate scores
-    results = []
-    gap_analyses = {}
-    
-    for skill, config in skills_enhanced.items():
-        score = calculate_enhanced_score(cv_text, job_desc, config)
-        results.append([skill, score, config["threshold"]])
-        gap_analyses[skill] = analyze_gaps(cv_text, config)
+    with st.spinner("Analyzing CV against job requirements..."):
+        results = []
+        gap_analyses = {}
+        
+        for skill, config in skills_enhanced.items():
+            score = calculate_enhanced_score(cv_text, job_desc, config)
+            results.append([skill, score, config["threshold"]])
+            gap_analyses[skill] = analyze_gaps(cv_text, config)
     
     df = pd.DataFrame(results, columns=["Skill", "Match %", "Threshold"])
     overall_score = round(df["Match %"].mean(), 2)
     
     # Display overall metrics
+    st.divider()
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Overall Match", f"{overall_score}%")
@@ -234,6 +239,12 @@ if cv_file:
         avg_gap = round((df["Threshold"] - df["Match %"]).clip(lower=0).mean(), 1)
         st.metric("Avg Gap to Target", f"{avg_gap}%")
     
+    # Create color column for visualization
+    df["Status"] = df.apply(
+        lambda x: "Strong ✓" if x["Match %"] >= x["Threshold"] else "Needs Work △", 
+        axis=1
+    )
+    
     # Visualization
     fig = px.bar(
         df, 
@@ -241,11 +252,11 @@ if cv_file:
         y="Match %",
         title="Skill Match Overview (with Dynamic Thresholds)",
         range_y=[0, 100],
-        color=df.apply(lambda x: "Strong ✓" if x["Match %"] >= x["Threshold"] else "Needs Work △", axis=1),
+        color="Status",
         color_discrete_map={"Strong ✓": "#00CC66", "Needs Work △": "#FF9933"}
     )
     
-    # Add threshold line for each skill
+    # Add threshold markers
     fig.add_scatter(
         x=df["Skill"], 
         y=df["Threshold"],
@@ -268,7 +279,7 @@ if cv_file:
             gap_over = row["Match %"] - row["Threshold"]
             st.success(f"**{row['Skill']}** → {row['Match %']}% (exceeds target by {gap_over:.1f}%)")
     
-    # Improvement areas with detailed analysis
+    # Improvement areas
     st.subheader("🔧 Improvement Areas - Detailed Gap Analysis")
     improvement_df = df[df["Match %"] < df["Threshold"]]
     
@@ -282,7 +293,7 @@ if cv_file:
             gap_points = threshold - score
             gap = gap_analyses[skill]
             
-            with st.expander(f"**{skill}** → {score}% (need +{gap_points:.1f}% to reach {threshold}%) - Click for details"):
+            with st.expander(f"**{skill}** → {score}% (need +{gap_points:.1f}% to reach {threshold}%)"):
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -291,7 +302,7 @@ if cv_file:
                         for phrase in gap["missing_phrases"][:5]:
                             st.write(f"- *\"{phrase}\"*")
                     else:
-                        st.write("✓ None - excellent phrase coverage!")
+                        st.write("✓ Excellent phrase coverage!")
                     
                     st.write("")
                     st.write("**✅ Present Phrases:**")
@@ -309,32 +320,27 @@ if cv_file:
                         st.write("✓ All keywords present!")
                     
                     st.write("")
-                    st.write("**⚠️ Underused Keywords (add more):**")
+                    st.write("**⚠️ Underused Keywords:**")
                     if gap["underused_keywords"]:
                         for kw, count in gap["underused_keywords"][:6]:
-                            st.write(f"- *{kw}*: only {count}x mention")
+                            st.write(f"- *{kw}*: only {count}x")
                     else:
-                        st.write("✓ Good keyword frequency!")
+                        st.write("✓ Good frequency!")
                 
                 # Recommendations
                 st.divider()
-                st.write("**💡 Quick Fix Recommendations:**")
+                st.write("**💡 Recommendations:**")
                 
                 rec_count = 1
                 if gap["missing_phrases"]:
-                    st.write(f"{rec_count}. **Add this phrase to your current role:** \"{gap['missing_phrases'][0]}\"")
+                    st.write(f"{rec_count}. Add phrase: \"{gap['missing_phrases'][0]}\"")
                     rec_count += 1
                 
                 if gap["underused_keywords"]:
-                    st.write(f"{rec_count}. **Increase mentions of:** *{gap['underused_keywords'][0][0]}* (currently {gap['underused_keywords'][0][1]}x, target 3+)")
+                    st.write(f"{rec_count}. Increase: *{gap['underused_keywords'][0][0]}* (current: {gap['underused_keywords'][0][1]}x, target: 3+)")
                     rec_count += 1
                 
-                if gap["missing_keywords"]:
-                    missing_sample = gap["missing_keywords"][:3]
-                    st.write(f"{rec_count}. **Consider adding these keywords:** {', '.join(missing_sample)}")
-                    rec_count += 1
-                
-                st.write(f"{rec_count}. **Target improvement:** +{gap_points:.1f}% needed to reach {threshold}% threshold")
+                st.write(f"{rec_count}. Target: +{gap_points:.1f}% improvement needed")
     
     # Download results
     st.divider()
@@ -349,20 +355,13 @@ if cv_file:
 else:
     st.info("👆 Upload your CV (PDF format) to begin analysis")
     
-    # Show example scoring criteria
-    with st.expander("ℹ️ How does the scoring work?"):
+    with st.expander("ℹ️ How does scoring work?"):
         st.write("""
         **Enhanced Scoring Algorithm:**
         
-        1. **Phrase Matching (3x weight):** Multi-word phrases like "digital transformation" score higher than individual words
-        2. **Primary Keywords (2x weight):** Core competency keywords get double weight
-        3. **Secondary Keywords (1x weight):** Supporting terms counted normally
-        4. **Frequency Matters:** Mentioning keywords 3-5 times shows genuine expertise vs. one-time mention
-        5. **Dynamic Thresholds:** Each skill has its own target based on job requirements
-        
-        **Threshold Guide:**
-        - 75%: Core competencies (must be strong)
-        - 70%: Important skills (should be strong)
-        - 65%: Nice-to-have skills (moderate acceptable)
-        - 60%: Specialized skills (basic acceptable)
+        - **Phrase Matching (3x):** "digital transformation" scores higher than "digital"
+        - **Primary Keywords (2x):** Core skills get double weight
+        - **Secondary Keywords (1x):** Supporting terms normal weight
+        - **Frequency:** 3-5 mentions shows expertise vs. 1 mention
+        - **Thresholds:** Each skill has custom target based on job importance
         """)
