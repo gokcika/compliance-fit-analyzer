@@ -20,76 +20,75 @@ def read_pdf(file):
         return ""
 
 # ----------------------------- 
-# SEMANTIC KEYWORD DEFINITIONS
+# BALANCED KEYWORD DEFINITIONS
 # ----------------------------- 
 
-skills_semantic = {
+skills_balanced = {
     "Compliance & Risk Management": {
-        "primary": ["compliance", "risk", "governance", "ethics"],
-        "secondary": ["framework", "control", "oversight", "monitoring", "risk management"],
+        "core": ["compliance", "compliant", "risk management", "risk mitigation"],
+        "primary": ["risk", "governance", "ethics", "ethical"],
+        "secondary": ["control", "oversight", "monitoring"],
         "threshold": 75
     },
     
     "Digitalization": {
-        "primary": ["digitalization", "digital transformation", "automation"],
-        "secondary": ["digital", "automated", "digitalize", "automate", "modernize", 
-                     "technology", "IT", "system", "tool", "innovation"],
-        "related": ["tech", "technological", "digitization"],
+        "core": ["digitalization", "digital transformation", "digitization"],  # Rare, high value
+        "primary": ["automation", "automated", "automate"],
+        "secondary": ["digital", "modernize", "innovation", "digitalize"],
+        "generic": ["technology", "IT", "system", "tool"],  # Common, low weight
         "threshold": 65
     },
     
     "M&A & Due Diligence": {
-        "primary": ["merger", "acquisition", "M&A", "due diligence"],
-        "ma_terms": ["merger", "mergers", "acquisition", "acquisitions", "M&A", "m&a"],
-        "dd_variants": [
+        "core": ["merger and acquisition", "M&A", "due diligence"],
+        "ma_terms": ["merger", "mergers", "acquisition", "acquisitions"],
+        "dd_equivalents": [
             "due diligence",
             "legal due diligence",
-            "regulatory due diligence",
-            "compliance due diligence",
-            "diligence assessment"
+            "regulatory due diligence", 
+            "compliance due diligence"
         ],
-        "integration": ["integration", "post-merger", "post-acquisition", "consolidation"],
-        "transaction": ["transaction", "deal", "amalgamation"],
-        "compliance_context": [
-            "compliance risk", "compliance framework", "compliance system",
-            "legal compliance", "regulatory compliance"
-        ],
-        "related": ["target", "restructuring"],
+        "integration": ["post-merger integration", "post-acquisition integration", "integration"],
+        "transaction": ["transaction", "deal", "amalgamation", "consolidation"],
+        "context": ["target", "target entity", "target company"],
         "threshold": 60
     },
     
     "Global Experience": {
-        "primary": ["global", "international"],
-        "secondary": ["regional", "cross-border", "worldwide", "headquarters"],
-        "related": ["collaboration", "collaborate"],
+        "core": ["global team", "international collaboration"],
+        "primary": ["global", "international", "worldwide"],
+        "secondary": ["regional", "cross-border", "headquarters"],
         "threshold": 70
     },
     
     "Project Management": {
-        "primary": ["project", "program", "manage", "lead"],
-        "pm_verbs": ["manage", "lead", "coordinate", "direct", "execute", "deliver"],
-        "pm_nouns": ["project", "program", "initiative", "implementation"],
-        "pm_context": ["ownership", "priorities", "dynamic", "cross-functional"],
+        "core": ["project management", "program management"],
+        "pm_actions": ["manage project", "lead project", "coordinate project", "execute project"],
+        "primary": ["project", "program", "initiative"],
+        "verbs": ["manage", "lead", "coordinate", "execute", "deliver"],
+        "context": ["ownership", "priorities", "dynamic", "implementation"],
         "threshold": 70
     },
     
     "Training": {
-        "primary": ["training", "workshop", "education", "knowledge exchange"],
+        "core": ["training program", "knowledge exchange", "capability building"],
+        "primary": ["training", "workshop", "education"],
         "secondary": ["learning", "development", "mentoring", "coaching"],
-        "related": ["capability building", "teach", "educator"],
         "threshold": 65
     },
     
     "Regulatory Knowledge": {
-        "primary": ["regulation", "FCPA", "sanctions", "regulatory"],
-        "secondary": ["framework", "requirement", "law", "compliance"],
+        "core": ["regulatory framework", "regulatory requirement", "regulatory compliance"],
+        "specific": ["FCPA", "sanctions", "OFAC", "SFDA"],  # Specific regulations
+        "primary": ["regulation", "regulatory", "compliance requirement"],
+        "secondary": ["law", "legal requirement"],
         "threshold": 75
     }
 }
 
-def calculate_smart_score(cv_text, jd_text, skill_config, skill_name):
+def calculate_balanced_score(cv_text, jd_text, skill_config, skill_name):
     """
-    Smart scoring with semantic awareness
+    Balanced scoring with proper weighting hierarchy
     """
     cv_lower = cv_text.lower()
     jd_lower = jd_text.lower()
@@ -97,57 +96,79 @@ def calculate_smart_score(cv_text, jd_text, skill_config, skill_name):
     cv_keywords = []
     jd_keywords = []
     
+    # Weight hierarchy
+    weight_map = {
+        "core": 5,           # Highest - rare, high-value terms
+        "specific": 4,       # Specific named regulations/tools
+        "ma_terms": 3,
+        "dd_equivalents": 4, # Due diligence variants = critical
+        "pm_actions": 4,     # Action phrases
+        "primary": 2,
+        "secondary": 1,
+        "generic": 0.5,      # Common words - low weight
+        "verbs": 1,
+        "context": 1
+    }
+    
     for category, keywords in skill_config.items():
         if category == "threshold":
             continue
-            
+        
         if not isinstance(keywords, list):
             continue
         
-        if category in ["primary", "ma_terms", "dd_variants"]:
-            weight = 3
-        elif category in ["compliance_context", "pm_verbs"]:
-            weight = 2
+        weight = weight_map.get(category, 1)
+        
+        # Frequency cap based on weight (higher weight = lower cap to prevent inflation)
+        if weight >= 4:
+            cap = 8
+        elif weight >= 2:
+            cap = 10
         else:
-            weight = 1
+            cap = 6  # Generic words capped low
         
         for kw in keywords:
             cv_count = cv_lower.count(kw.lower())
             jd_count = jd_lower.count(kw.lower())
             
-            cv_keywords.extend([kw] * min(cv_count * weight, 12))
-            jd_keywords.extend([kw] * min(jd_count * weight, 12))
+            cv_keywords.extend([kw] * min(int(cv_count * weight), cap))
+            jd_keywords.extend([kw] * min(int(jd_count * weight), cap))
     
-    # Context co-occurrence bonus for M&A
+    # Moderate context bonuses (not over-aggressive)
     if skill_name == "M&A & Due Diligence":
         paragraphs = cv_text.split('\n')
+        bonus_count = 0
+        
         for para in paragraphs:
             para_lower = para.lower()
             
-            has_ma = any(term in para_lower for term in ["merger", "acquisition", "m&a", "transaction"])
-            has_compliance = any(term in para_lower for term in ["compliance", "regulatory", "legal"])
-            has_dd = "diligence" in para_lower or "assessment" in para_lower
+            has_ma = any(term in para_lower for term in ["merger", "acquisition", "m&a"])
+            has_legal_dd = "legal due diligence" in para_lower or "legal diligence" in para_lower
+            has_compliance = any(term in para_lower for term in ["compliance", "regulatory"])
             
-            if has_ma and has_compliance:
-                cv_keywords.extend(["ma_compliance_context"] * 5)
-                jd_keywords.extend(["ma_compliance_context"] * 3)
+            # Bonus only for meaningful co-occurrence
+            if has_ma and has_legal_dd:
+                bonus_count += 2  # Legal DD in M&A context = valid
             
-            if has_ma and has_dd:
-                cv_keywords.extend(["ma_diligence_context"] * 4)
-                jd_keywords.extend(["ma_diligence_context"] * 3)
-    
-    # PM verbs + nouns proximity bonus
-    if skill_name == "Project Management":
-        pm_verbs = ["manage", "lead", "coordinate", "direct", "execute"]
-        pm_nouns = ["project", "program", "initiative"]
+            if has_ma and has_compliance and bonus_count < 4:  # Cap total bonus
+                bonus_count += 1
         
-        for verb in pm_verbs:
-            for noun in pm_nouns:
-                pattern = f"{verb}.{{0,50}}{noun}|{noun}.{{0,50}}{verb}"
-                matches = len(re.findall(pattern, cv_lower))
-                if matches > 0:
-                    cv_keywords.extend(["pm_phrase"] * matches * 3)
-                    jd_keywords.extend(["pm_phrase"] * 2)
+        cv_keywords.extend(["ma_context_bonus"] * bonus_count)
+        jd_keywords.extend(["ma_context_bonus"] * 2)
+    
+    if skill_name == "Project Management":
+        # Check for action phrases (not just co-occurrence)
+        pm_phrases = [
+            "manage project", "lead project", "coordinate project",
+            "manage program", "lead program", "manage initiative"
+        ]
+        
+        phrase_count = 0
+        for phrase in pm_phrases:
+            phrase_count += cv_lower.count(phrase)
+        
+        cv_keywords.extend(["pm_action_phrase"] * min(phrase_count * 3, 9))
+        jd_keywords.extend(["pm_action_phrase"] * 2)
     
     cv_part = " ".join(cv_keywords) if cv_keywords else "none"
     jd_part = " ".join(jd_keywords) if jd_keywords else "none"
@@ -164,7 +185,7 @@ def calculate_smart_score(cv_text, jd_text, skill_config, skill_name):
         return 40
 
 # ----------------------------- 
-# JOB DESCRIPTION
+# JOB DESCRIPTION (same)
 # ----------------------------- 
 
 job_desc = (
@@ -202,9 +223,9 @@ job_desc = (
 # STREAMLIT APP
 # ----------------------------- 
 
-st.set_page_config(page_title="TalentFit Smart", layout="wide")
-st.title("🎯 TalentFit: Smart Career Fit Analyzer")
-st.caption("Context-aware CV analysis with semantic keyword matching")
+st.set_page_config(page_title="TalentFit", layout="wide")
+st.title("🎯 TalentFit: Career Fit Analyzer")
+st.caption("Balanced semantic analysis with proper keyword weighting")
 
 cv_file = st.file_uploader("Upload CV (PDF)", type=["pdf"], key="cv_upload")
 
@@ -216,11 +237,11 @@ if cv_file:
         st.error("Could not extract text from PDF.")
         st.stop()
     
-    with st.spinner("Analyzing with semantic matching..."):
+    with st.spinner("Analyzing..."):
         results = []
         
-        for skill, config in skills_semantic.items():
-            score = calculate_smart_score(cv_text, job_desc, config, skill)
+        for skill, config in skills_balanced.items():
+            score = calculate_balanced_score(cv_text, job_desc, config, skill)
             threshold = config.get("threshold", 70)
             results.append([skill, score, threshold])
     
@@ -268,7 +289,6 @@ if cv_file:
         st.info("Focus on improvement areas below.")
     else:
         for _, row in strengths.iterrows():
-            gap_over = row["Match %"] - row["Threshold"]
             st.success(f"**{row['Skill']}** → {row['Match %']}%")
     
     st.subheader("🔧 Improvement Areas")
@@ -291,16 +311,3 @@ if cv_file:
 
 else:
     st.info("👆 Upload your CV (PDF format) to begin")
-    
-    with st.expander("ℹ️ What's different in Smart Scoring?"):
-        st.write("""
-        **Smart Semantic Algorithm Features:**
-        
-        1. **Synonym Recognition:** "Legal due diligence" = "Compliance due diligence" (for regulated entities)
-        2. **Context Awareness:** Bonus when M&A terms + compliance terms appear in same paragraph
-        3. **Phrase Proximity:** "Manage projects" scores higher than "manage" and "projects" separately
-        4. **Semantic Weighting:** Related terms weighted appropriately (legal DD = equivalent to compliance DD)
-        5. **Category Boosting:** Critical phrases get 3x weight, supporting terms 1-2x
-        
-        This prevents penalizing legitimate experience described with different (but equivalent) terminology.
-        """)
