@@ -83,63 +83,29 @@ job_desc = (
 )
 
 # -----------------------------
-# Skill keywords - UPDATED
+# Skill keywords
 # -----------------------------
 skills = {
     "Compliance & Risk Management": [
-        "compliance", "risk", "ethics", "technical compliance", "sustainability", 
-        "framework", "governance", "internal control", "audit", "policy", 
-        "procedure", "standard", "guideline", "monitoring", "assessment",
-        "risk mitigation", "risk management", "risk analysis", "compliance system"
+        "compliance", "risk", "ethics", "technical compliance", "sustainability", "framework", "governance"
     ],
-    
     "Digitalization": [
-        "digital", "digitalization", "digitization", "automation", "system", 
-        "tool", "IT", "technology", "modernize", "innovation", "software",
-        "platform", "implementation", "automated", "real-time", "workflow",
-        "process improvement", "digital transformation", "KYC", "BPC", "SPODOM",
-        "tracking system", "formula", "solution"
+        "digital", "digitalization", "automation", "system", "tool", "IT", "technology", "modernize", "innovation"
     ],
-    
     "M&A & Due Diligence": [
-        "merger", "acquisition", "due diligence", "integration", "transaction",
-        "M&A", "consolidation", "takeover", "deal", "valuation", "assessment",
-        "post-merger", "synergy", "restructuring", "carve-out", "amalgamation",
-        "merger agreement", "target entities", "workstream", "transaction management",
-        "post-acquisition", "legal counsel"
+        "merger", "acquisition", "due diligence", "integration", "transaction"
     ],
-    
     "Global Experience": [
-        "global", "regional", "international", "cross-border", "headquarters", 
-        "collaboration", "multinational", "worldwide", "cross-cultural",
-        "remote", "distributed", "multi-region", "Central Asia", "EMEA",
-        "Turkey", "Bulgaria", "Romania", "Saudi Arabia", "cross-functional"
+        "global", "regional", "international", "cross-border", "headquarters", "collaboration"
     ],
-    
     "Project Management": [
-        "project", "program", "coordination", "initiative", "implementation", 
-        "ownership", "priorities", "dynamic environment", "stakeholder",
-        "PMO", "agile", "milestone", "deliverable", "timeline",
-        "execution", "resource", "planning", "coordinating", "manage multiple",
-        "simultaneous", "fast-paced", "competing priorities", "project delivery"
+        "project", "program", "coordination", "initiative", "implementation", "ownership", "priorities", "dynamic environment"
     ],
-    
     "Training": [
-        "training", "workshop", "education", "knowledge exchange", "learning", 
-        "development", "teaching", "coaching", "mentoring", "onboarding",
-        "curriculum", "instruction", "facilitation", "presentation", "seminar",
-        "e-learning", "certification", "facilitate", "session", "educational",
-        "training programs", "training materials", "capability-building",
-        "knowledge transfer", "train", "deliver", "instructor", "training delivery",
-        "awareness", "customized training"
+        "training", "workshop", "education", "knowledge exchange", "learning", "development"
     ],
-    
     "Regulatory Knowledge": [
-        "regulation", "regulatory", "FCPA", "sanctions", "compliance", "laws", 
-        "medtech", "framework", "FDA", "legislation", "legal", "statute",
-        "directive", "ordinance", "code", "anti-corruption", "anti-bribery",
-        "data protection", "GDPR", "healthcare regulation", "medical device",
-        "UK Bribery Act", "transparency", "healthcare transparency"
+        "regulation", "FCPA", "sanctions", "compliance", "laws", "medtech", "framework"
     ]
 }
 
