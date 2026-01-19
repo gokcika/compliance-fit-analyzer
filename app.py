@@ -17,9 +17,30 @@ def read_pdf(file):
             text += page_text + " "
     return text
 
-def calculate_similarity(text1, text2):
-    vectorizer = TfidfVectorizer(stop_words="english")
-    tfidf = vectorizer.fit_transform([text1, text2])
+def calculate_similarity(cv_text, jd_text, keywords):
+    """
+    Improved similarity calculation:
+    - Extracts sentences containing keywords from both texts
+    - Uses bigram matching (ngram_range=(1,2))
+    - Returns 0 if no relevant content found
+    """
+    # Extract sentences containing any keyword
+    cv_sentences = [s.strip() for s in cv_text.split('.') if any(k.lower() in s.lower() for k in keywords)]
+    jd_sentences = [s.strip() for s in jd_text.split('.') if any(k.lower() in s.lower() for k in keywords)]
+    
+    # If no matching content, return 0
+    if not cv_sentences or not jd_sentences:
+        return 0
+    
+    # Combine sentences back into text blocks
+    cv_part = ' '.join(cv_sentences)
+    jd_part = ' '.join(jd_sentences)
+    
+    # TF-IDF with bigram support
+    vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
+    tfidf = vectorizer.fit_transform([cv_part, jd_part])
+    
+    # Calculate cosine similarity
     score = cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
     return round(score * 100, 2)
 
@@ -83,7 +104,7 @@ job_desc = (
 )
 
 # -----------------------------
-# Skill keywords
+# Skill keywords (Training expanded)
 # -----------------------------
 skills = {
     "Compliance & Risk Management": [
@@ -102,7 +123,10 @@ skills = {
         "project", "program", "coordination", "initiative", "implementation", "ownership", "priorities", "dynamic environment"
     ],
     "Training": [
-        "training", "workshop", "education", "knowledge exchange", "learning", "development"
+        "training", "workshop", "education", "knowledge exchange", "learning", "development",
+        "teach", "teaching", "instructor", "facilitation", "facilitating", "coaching", "mentor", "mentoring",
+        "onboard", "onboarding", "curriculum", "program design", "skill development", "capacity building",
+        "knowledge transfer", "knowledge sharing", "train the trainer", "upskilling"
     ],
     "Regulatory Knowledge": [
         "regulation", "FCPA", "sanctions", "compliance", "laws", "medtech", "framework"
@@ -117,9 +141,7 @@ if cv_file:
 
     results = []
     for skill, keywords in skills.items():
-        cv_part = " ".join([k for k in keywords if k.lower() in cv_text.lower()])
-        jd_part = " ".join([k for k in keywords if k.lower() in job_desc.lower()])
-        score = calculate_similarity(cv_part, jd_part) if cv_part and jd_part else 40
+        score = calculate_similarity(cv_text, job_desc, keywords)
         results.append([skill, score])
 
     df = pd.DataFrame(results, columns=["Skill", "Match %"])
