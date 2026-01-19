@@ -4,13 +4,9 @@ import plotly.express as px
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import PyPDF2
-
-# ----------------------------- 
-# HELPER FUNCTIONS
-# ----------------------------- 
+import re
 
 def read_pdf(file):
-    """Extract text from PDF file"""
     try:
         reader = PyPDF2.PdfReader(file)
         text = ""
@@ -23,9 +19,77 @@ def read_pdf(file):
         st.error(f"Error reading PDF: {e}")
         return ""
 
-def calculate_similarity_simple(cv_text, jd_text, keywords):
+# ----------------------------- 
+# SEMANTIC KEYWORD DEFINITIONS
+# ----------------------------- 
+
+skills_semantic = {
+    "Compliance & Risk Management": {
+        "primary": ["compliance", "risk", "governance", "ethics"],
+        "secondary": ["framework", "control", "oversight", "monitoring", "risk management"],
+        "threshold": 75
+    },
+    
+    "Digitalization": {
+        "primary": ["digitalization", "digital transformation", "automation"],
+        "secondary": ["digital", "automated", "digitalize", "automate", "modernize", 
+                     "technology", "IT", "system", "tool", "innovation"],
+        "related": ["tech", "technological", "digitization"],
+        "threshold": 65
+    },
+    
+    "M&A & Due Diligence": {
+        "primary": ["merger", "acquisition", "M&A", "due diligence"],
+        "ma_terms": ["merger", "mergers", "acquisition", "acquisitions", "M&A", "m&a"],
+        "dd_variants": [
+            "due diligence",
+            "legal due diligence",
+            "regulatory due diligence",
+            "compliance due diligence",
+            "diligence assessment"
+        ],
+        "integration": ["integration", "post-merger", "post-acquisition", "consolidation"],
+        "transaction": ["transaction", "deal", "amalgamation"],
+        "compliance_context": [
+            "compliance risk", "compliance framework", "compliance system",
+            "legal compliance", "regulatory compliance"
+        ],
+        "related": ["target", "restructuring"],
+        "threshold": 60
+    },
+    
+    "Global Experience": {
+        "primary": ["global", "international"],
+        "secondary": ["regional", "cross-border", "worldwide", "headquarters"],
+        "related": ["collaboration", "collaborate"],
+        "threshold": 70
+    },
+    
+    "Project Management": {
+        "primary": ["project", "program", "manage", "lead"],
+        "pm_verbs": ["manage", "lead", "coordinate", "direct", "execute", "deliver"],
+        "pm_nouns": ["project", "program", "initiative", "implementation"],
+        "pm_context": ["ownership", "priorities", "dynamic", "cross-functional"],
+        "threshold": 70
+    },
+    
+    "Training": {
+        "primary": ["training", "workshop", "education", "knowledge exchange"],
+        "secondary": ["learning", "development", "mentoring", "coaching"],
+        "related": ["capability building", "teach", "educator"],
+        "threshold": 65
+    },
+    
+    "Regulatory Knowledge": {
+        "primary": ["regulation", "FCPA", "sanctions", "regulatory"],
+        "secondary": ["framework", "requirement", "law", "compliance"],
+        "threshold": 75
+    }
+}
+
+def calculate_smart_score(cv_text, jd_text, skill_config, skill_name):
     """
-    Simple keyword-based scoring
+    Smart scoring with semantic awareness
     """
     cv_lower = cv_text.lower()
     jd_lower = jd_text.lower()
@@ -33,12 +97,57 @@ def calculate_similarity_simple(cv_text, jd_text, keywords):
     cv_keywords = []
     jd_keywords = []
     
-    for keyword in keywords:
-        cv_count = cv_lower.count(keyword.lower())
-        jd_count = jd_lower.count(keyword.lower())
+    for category, keywords in skill_config.items():
+        if category == "threshold":
+            continue
+            
+        if not isinstance(keywords, list):
+            continue
         
-        cv_keywords.extend([keyword] * cv_count)
-        jd_keywords.extend([keyword] * jd_count)
+        if category in ["primary", "ma_terms", "dd_variants"]:
+            weight = 3
+        elif category in ["compliance_context", "pm_verbs"]:
+            weight = 2
+        else:
+            weight = 1
+        
+        for kw in keywords:
+            cv_count = cv_lower.count(kw.lower())
+            jd_count = jd_lower.count(kw.lower())
+            
+            cv_keywords.extend([kw] * min(cv_count * weight, 12))
+            jd_keywords.extend([kw] * min(jd_count * weight, 12))
+    
+    # Context co-occurrence bonus for M&A
+    if skill_name == "M&A & Due Diligence":
+        paragraphs = cv_text.split('\n')
+        for para in paragraphs:
+            para_lower = para.lower()
+            
+            has_ma = any(term in para_lower for term in ["merger", "acquisition", "m&a", "transaction"])
+            has_compliance = any(term in para_lower for term in ["compliance", "regulatory", "legal"])
+            has_dd = "diligence" in para_lower or "assessment" in para_lower
+            
+            if has_ma and has_compliance:
+                cv_keywords.extend(["ma_compliance_context"] * 5)
+                jd_keywords.extend(["ma_compliance_context"] * 3)
+            
+            if has_ma and has_dd:
+                cv_keywords.extend(["ma_diligence_context"] * 4)
+                jd_keywords.extend(["ma_diligence_context"] * 3)
+    
+    # PM verbs + nouns proximity bonus
+    if skill_name == "Project Management":
+        pm_verbs = ["manage", "lead", "coordinate", "direct", "execute"]
+        pm_nouns = ["project", "program", "initiative"]
+        
+        for verb in pm_verbs:
+            for noun in pm_nouns:
+                pattern = f"{verb}.{{0,50}}{noun}|{noun}.{{0,50}}{verb}"
+                matches = len(re.findall(pattern, cv_lower))
+                if matches > 0:
+                    cv_keywords.extend(["pm_phrase"] * matches * 3)
+                    jd_keywords.extend(["pm_phrase"] * 2)
     
     cv_part = " ".join(cv_keywords) if cv_keywords else "none"
     jd_part = " ".join(jd_keywords) if jd_keywords else "none"
@@ -90,102 +199,16 @@ job_desc = (
 )
 
 # ----------------------------- 
-# EXPANDED SKILL DEFINITIONS
-# ----------------------------- 
-
-skills_expanded = {
-    "Compliance & Risk Management": [
-        "compliance", "compliant", "comply",
-        "risk", "risks", "risk management", "risk assessment", "risk mitigation",
-        "ethics", "ethical", "ethics compliance",
-        "technical compliance", "sustainability", "sustainable",
-        "framework", "frameworks", 
-        "governance", "corporate governance", "govern",
-        "control", "controls", "oversight", "monitoring", "monitor"
-    ],
-    "Digitalization": [
-        "digital", "digitally", "digitalization", "digitization", "digitalize",
-        "automation", "automated", "automate", "automating",
-        "system", "systems", 
-        "tool", "tools", 
-        "IT", "information technology",
-        "technology", "technologies", "technological", "tech",
-        "modernize", "modernization", "modernizing",
-        "innovation", "innovative", "innovate"
-    ],
-    "M&A & Due Diligence": [
-        "merger", "mergers", "merge", "merging",
-        "acquisition", "acquisitions", "acquire", "acquired", "acquiring",
-        "due diligence", "diligence",
-        "integration", "integrate", "integrating", "post-merger integration",
-        "transaction", "transactions", "transactional",
-        "M&A", "M & A",
-        "target", "target company", "target entity",
-        "deal", "deals",
-        "consolidation", "consolidate",
-        "amalgamation", "amalgamate",
-        "restructuring", "restructure",
-        "pre-acquisition", "post-acquisition"
-    ],
-    "Global Experience": [
-        "global", "globally", "global team",
-        "regional", "region", "regions",
-        "international", "internationally", "international environment",
-        "cross-border", "cross border",
-        "headquarters", "HQ",
-        "collaboration", "collaborate", "collaborative",
-        "worldwide", "world-wide"
-    ],
-    "Project Management": [
-        "project", "projects", 
-        "program", "programs", "programme",
-        "coordination", "coordinate", "coordinating", "coordinator",
-        "initiative", "initiatives",
-        "implementation", "implement", "implementing", "implemented",
-        "ownership", "own", "owned",
-        "priorities", "prioritize", "prioritization", "priority",
-        "dynamic environment", "dynamic", "fast-paced",
-        "led", "lead", "leading",
-        "manage", "managed", "managing", "management",
-        "execution", "execute", "delivery", "deliver"
-    ],
-    "Training": [
-        "training", "trainings", "trained", "train", "trainer",
-        "workshop", "workshops",
-        "education", "educational", "educate", "educator",
-        "knowledge exchange", "knowledge sharing", "knowledge transfer",
-        "learning", "learn", "learning and development",
-        "development", "develop", "developing", "developer",
-        "mentoring", "mentor", "mentored",
-        "coaching", "coach", "coached",
-        "capability building", "capability", "upskilling", "skill building",
-        "teaching", "teach"
-    ],
-    "Regulatory Knowledge": [
-        "regulation", "regulations", "regulatory", "regulate",
-        "FCPA", "Foreign Corrupt Practices Act",
-        "sanctions", "sanction", "sanctioned",
-        "compliance", "compliant",
-        "laws", "law", "legal",
-        "medtech", "medical device", "medical technology",
-        "framework", "frameworks",
-        "requirement", "requirements", "required"
-    ]
-}
-
-# ----------------------------- 
 # STREAMLIT APP
 # ----------------------------- 
 
-st.set_page_config(page_title="TalentFit Enhanced", layout="wide")
-st.title("🎯 TalentFit: Career Fit Analyzer")
-st.caption("Analyze your CV against Siemens Healthineers job requirements")
+st.set_page_config(page_title="TalentFit Smart", layout="wide")
+st.title("🎯 TalentFit: Smart Career Fit Analyzer")
+st.caption("Context-aware CV analysis with semantic keyword matching")
 
-# File uploader
 cv_file = st.file_uploader("Upload CV (PDF)", type=["pdf"], key="cv_upload")
 
 if cv_file:
-    # Read CV
     with st.spinner("Reading CV..."):
         cv_text = read_pdf(cv_file)
     
@@ -193,69 +216,91 @@ if cv_file:
         st.error("Could not extract text from PDF.")
         st.stop()
     
-    # Calculate scores
-    with st.spinner("Analyzing..."):
+    with st.spinner("Analyzing with semantic matching..."):
         results = []
         
-        for skill, keywords in skills_expanded.items():
-            score = calculate_similarity_simple(cv_text, job_desc, keywords)
-            results.append([skill, score])
+        for skill, config in skills_semantic.items():
+            score = calculate_smart_score(cv_text, job_desc, config, skill)
+            threshold = config.get("threshold", 70)
+            results.append([skill, score, threshold])
     
-    df = pd.DataFrame(results, columns=["Skill", "Match %"])
+    df = pd.DataFrame(results, columns=["Skill", "Match %", "Threshold"])
     overall_score = round(df["Match %"].mean(), 2)
     
-    # Display metrics
     st.divider()
     col1, col2 = st.columns(2)
     with col1:
         st.metric("Overall Match", f"{overall_score}%")
     with col2:
-        strong_count = len(df[df["Match %"] >= 70])
-        st.metric("Strong Matches (≥70%)", f"{strong_count}/{len(df)}")
+        strong_count = len(df[df["Match %"] >= df["Threshold"]])
+        st.metric("Strong Matches", f"{strong_count}/{len(df)}")
     
-    # Visualization
+    df["Status"] = df.apply(
+        lambda x: "Strong ✓" if x["Match %"] >= x["Threshold"] else "Needs Work △",
+        axis=1
+    )
+    
     fig = px.bar(
         df, 
         x="Skill", 
         y="Match %",
         title="Skill Match Overview",
         range_y=[0, 100],
-        color=df["Match %"].apply(lambda x: "Strong" if x >= 70 else "Needs Work"),
-        color_discrete_map={"Strong": "#00CC66", "Needs Work": "#FF9933"}
+        color="Status",
+        color_discrete_map={"Strong ✓": "#00CC66", "Needs Work △": "#FF9933"}
+    )
+    
+    fig.add_scatter(
+        x=df["Skill"], 
+        y=df["Threshold"],
+        mode='markers',
+        marker=dict(color='red', size=10, symbol='line-ew-open'),
+        name='Threshold',
+        showlegend=True
     )
     
     st.plotly_chart(fig, use_container_width=True)
     
-    # Strengths
     st.subheader("✅ Why Hire Me? (Key Strengths)")
-    strengths = df[df["Match %"] >= 70]
+    strengths = df[df["Match %"] >= df["Threshold"]]
     
     if strengths.empty:
         st.info("Focus on improvement areas below.")
     else:
         for _, row in strengths.iterrows():
+            gap_over = row["Match %"] - row["Threshold"]
             st.success(f"**{row['Skill']}** → {row['Match %']}%")
     
-    # Improvement areas
     st.subheader("🔧 Improvement Areas")
-    improvements = df[df["Match %"] < 70]
+    improvements = df[df["Match %"] < df["Threshold"]]
     
     if improvements.empty:
-        st.success("🎉 All skills above 70%!")
+        st.success("🎉 All skills meet thresholds!")
     else:
         for _, row in improvements.iterrows():
-            gap = 70 - row["Match %"]
-            st.warning(f"**{row['Skill']}** → {row['Match %']}% (need +{gap:.1f}%)")
+            st.warning(f"**{row['Skill']}** → {row['Match %']}%")
     
-    # Download
     st.divider()
     csv = df.to_csv(index=False)
     st.download_button(
-        "📥 Download Results as CSV",
+        "📥 Download Results",
         csv,
         "cv_analysis.csv",
         "text/csv"
     )
 
 else:
-    st.info("👆 Upload your CV (PDF format) to begin analysis")
+    st.info("👆 Upload your CV (PDF format) to begin")
+    
+    with st.expander("ℹ️ What's different in Smart Scoring?"):
+        st.write("""
+        **Smart Semantic Algorithm Features:**
+        
+        1. **Synonym Recognition:** "Legal due diligence" = "Compliance due diligence" (for regulated entities)
+        2. **Context Awareness:** Bonus when M&A terms + compliance terms appear in same paragraph
+        3. **Phrase Proximity:** "Manage projects" scores higher than "manage" and "projects" separately
+        4. **Semantic Weighting:** Related terms weighted appropriately (legal DD = equivalent to compliance DD)
+        5. **Category Boosting:** Critical phrases get 3x weight, supporting terms 1-2x
+        
+        This prevents penalizing legitimate experience described with different (but equivalent) terminology.
+        """)
