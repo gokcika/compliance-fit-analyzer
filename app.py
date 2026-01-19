@@ -59,7 +59,7 @@ job_desc = (
     "This position can be filled anywhere in the world where Siemens Healthineers is present.\n\n"
 
     "Your tasks and responsibilities:\n"
-    "- You take ownership of developing and executing the compliance department’s digitalization strategy.\n"
+    "- You take ownership of developing and executing the compliance department's digitalization strategy.\n"
     "- You lead and support key digitization projects, ensuring successful implementation in collaboration with global stakeholders.\n"
     "- You identify compliance needs together with Governance Owners and Regional Compliance Officers and turn them into impactful change projects.\n"
     "- You assess internal risk management processes, analyze compliance trends (e.g., technical compliance, ethics, sustainability), and develop measures to minimize risk.\n"
@@ -126,39 +126,67 @@ if cv_file:
     overall_score = round(df["Match %"].mean(), 2)
 
     # -----------------------------
-    # Display Results
+    # Display Results - Two Column Layout
     # -----------------------------
-    st.metric("Overall Match", f"{overall_score} %")
+    st.divider()
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.metric("Overall Match", f"{overall_score}%")
+    
+    with col2:
+        strong_count = len(df[df["Match %"] >= 70])
+        st.metric("Strong Matches (≥70%)", f"{strong_count}/{len(df)}")
 
+    # -----------------------------
+    # Colored Bar Chart
+    # -----------------------------
     fig = px.bar(
         df,
         x="Skill",
         y="Match %",
         title="Skill Match Overview",
-        range_y=[0, 100]
+        range_y=[0, 100],
+        color=df["Match %"].apply(lambda x: "Strong" if x >= 70 else "Needs Work"),
+        color_discrete_map={"Strong": "#00CC66", "Needs Work": "#FF9933"}
     )
     st.plotly_chart(fig, use_container_width=True)
 
     # -----------------------------
     # Highlight strengths
     # -----------------------------
-    st.subheader("Why Hire Me? (Key Strengths)")
+    st.subheader("✅ Why Hire Me? (Key Strengths)")
     strengths = df[df["Match %"] >= 70]
 
     if strengths.empty:
-        st.info("No particular strengths detected. Consider improving your skills.")
+        st.info("Focus on improvement areas below.")
     else:
         for _, row in strengths.iterrows():
-            st.success(f"{row['Skill']} → Strong match")
+            st.success(f"**{row['Skill']}** → {row['Match %']}%")
 
     # -----------------------------
     # Improvement Areas
     # -----------------------------
-    st.subheader("Improvement Areas")
-    risks = df[df["Match %"] < 70]
+    st.subheader("🔧 Improvement Areas")
+    improvements = df[df["Match %"] < 70]
 
-    if risks.empty:
-        st.success("No major improvement areas detected. Strong overall fit!")
+    if improvements.empty:
+        st.success("🎉 All skills above 70%!")
     else:
-        for _, row in risks.iterrows():
-            st.warning(f"{row['Skill']} → Development opportunity")
+        for _, row in improvements.iterrows():
+            st.warning(f"**{row['Skill']}** → {row['Match %']}%")
+
+    # -----------------------------
+    # CSV Download
+    # -----------------------------
+    st.divider()
+    csv = df.to_csv(index=False)
+    st.download_button(
+        "📥 Download Results",
+        csv,
+        "cv_analysis.csv",
+        "text/csv"
+    )
+
+else:
+    st.info("👆 Upload your CV (PDF format) to begin")
