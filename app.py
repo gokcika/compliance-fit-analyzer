@@ -4,7 +4,6 @@ import plotly.express as px
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import PyPDF2
-import re
 
 def read_pdf(file):
     try:
@@ -19,76 +18,9 @@ def read_pdf(file):
         st.error(f"Error reading PDF: {e}")
         return ""
 
-# ----------------------------- 
-# BALANCED KEYWORD DEFINITIONS
-# ----------------------------- 
-
-skills_balanced = {
-    "Compliance & Risk Management": {
-        "core": ["compliance", "compliant", "risk management", "risk mitigation"],
-        "primary": ["risk", "governance", "ethics", "ethical"],
-        "secondary": ["control", "oversight", "monitoring"],
-        "threshold": 75
-    },
-    
-    "Digitalization": {
-        "core": ["digitalization", "digital transformation", "digitization"],
-        "primary": ["automation", "automated", "automate"],
-        "secondary": ["digital", "modernize", "innovation", "digitalize"],
-        "generic": ["technology", "IT", "system", "tool"],
-        "threshold": 65
-    },
-    
-    "M&A & Due Diligence": {
-        "core": ["merger and acquisition", "M&A", "due diligence"],
-        "ma_terms": ["merger", "mergers", "acquisition", "acquisitions"],
-        "dd_equivalents": [
-            "due diligence",
-            "legal due diligence",
-            "regulatory due diligence", 
-            "compliance due diligence"
-        ],
-        "integration": ["post-merger integration", "post-acquisition integration", "integration"],
-        "transaction": ["transaction", "deal", "amalgamation", "consolidation"],
-        "context": ["target", "target entity", "target company"],
-        "threshold": 60
-    },
-    
-    "Global Experience": {
-        "core": ["global team", "international collaboration"],
-        "primary": ["global", "international", "worldwide"],
-        "secondary": ["regional", "cross-border", "headquarters"],
-        "threshold": 70
-    },
-    
-    "Project Management": {
-        "core": ["project management", "program management"],
-        "pm_actions": ["manage project", "lead project", "coordinate project", "execute project"],
-        "primary": ["project", "program", "initiative"],
-        "verbs": ["manage", "lead", "coordinate", "execute", "deliver"],
-        "context": ["ownership", "priorities", "dynamic", "implementation"],
-        "threshold": 70
-    },
-    
-    "Training": {
-        "core": ["training program", "knowledge exchange", "capability building"],
-        "primary": ["training", "workshop", "education"],
-        "secondary": ["learning", "development", "mentoring", "coaching"],
-        "threshold": 65
-    },
-    
-    "Regulatory Knowledge": {
-        "core": ["regulatory framework", "regulatory requirement", "regulatory compliance"],
-        "specific": ["FCPA", "Foreign Corrupt Practices Act"],
-        "primary": ["regulation", "regulations", "regulatory", "compliance requirement"],
-        "secondary": ["law", "legal requirement"],
-        "threshold": 75
-    }
-}
-
-def calculate_balanced_score(cv_text, jd_text, skill_config, skill_name):
+def calculate_similarity_simple(cv_text, jd_text, keywords):
     """
-    Balanced scoring with proper weighting hierarchy
+    Simple, reliable keyword matching
     """
     cv_lower = cv_text.lower()
     jd_lower = jd_text.lower()
@@ -96,74 +28,13 @@ def calculate_balanced_score(cv_text, jd_text, skill_config, skill_name):
     cv_keywords = []
     jd_keywords = []
     
-    weight_map = {
-        "core": 5,
-        "specific": 4,
-        "ma_terms": 3,
-        "dd_equivalents": 4,
-        "pm_actions": 4,
-        "primary": 2,
-        "secondary": 1,
-        "generic": 0.5,
-        "verbs": 1,
-        "context": 1
-    }
-    
-    for category, keywords in skill_config.items():
-        if category == "threshold":
-            continue
+    for keyword in keywords:
+        cv_count = cv_lower.count(keyword.lower())
+        jd_count = jd_lower.count(keyword.lower())
         
-        if not isinstance(keywords, list):
-            continue
-        
-        weight = weight_map.get(category, 1)
-        
-        if weight >= 4:
-            cap = 8
-        elif weight >= 2:
-            cap = 10
-        else:
-            cap = 6
-        
-        for kw in keywords:
-            cv_count = cv_lower.count(kw.lower())
-            jd_count = jd_lower.count(kw.lower())
-            
-            cv_keywords.extend([kw] * min(int(cv_count * weight), cap))
-            jd_keywords.extend([kw] * min(int(jd_count * weight), cap))
-    
-    if skill_name == "M&A & Due Diligence":
-        paragraphs = cv_text.split('\n')
-        bonus_count = 0
-        
-        for para in paragraphs:
-            para_lower = para.lower()
-            
-            has_ma = any(term in para_lower for term in ["merger", "acquisition", "m&a"])
-            has_legal_dd = "legal due diligence" in para_lower or "legal diligence" in para_lower
-            has_compliance = any(term in para_lower for term in ["compliance", "regulatory"])
-            
-            if has_ma and has_legal_dd:
-                bonus_count += 2
-            
-            if has_ma and has_compliance and bonus_count < 4:
-                bonus_count += 1
-        
-        cv_keywords.extend(["ma_context_bonus"] * bonus_count)
-        jd_keywords.extend(["ma_context_bonus"] * 2)
-    
-    if skill_name == "Project Management":
-        pm_phrases = [
-            "manage project", "lead project", "coordinate project",
-            "manage program", "lead program", "manage initiative"
-        ]
-        
-        phrase_count = 0
-        for phrase in pm_phrases:
-            phrase_count += cv_lower.count(phrase)
-        
-        cv_keywords.extend(["pm_action_phrase"] * min(phrase_count * 3, 9))
-        jd_keywords.extend(["pm_action_phrase"] * 2)
+        # Cap at 8 to prevent single keyword domination
+        cv_keywords.extend([keyword] * min(cv_count, 8))
+        jd_keywords.extend([keyword] * min(jd_count, 8))
     
     cv_part = " ".join(cv_keywords) if cv_keywords else "none"
     jd_part = " ".join(jd_keywords) if jd_keywords else "none"
@@ -178,6 +49,127 @@ def calculate_balanced_score(cv_text, jd_text, skill_config, skill_name):
         return round(score * 100, 2)
     except:
         return 40
+
+# ----------------------------- 
+# COMPREHENSIVE KEYWORD LISTS (expanded but simple)
+# ----------------------------- 
+
+skills_final = {
+    "Compliance & Risk Management": [
+        # Core compliance terms
+        "compliance", "compliant", "comply",
+        "risk", "risks", "risk management", "risk assessment", "risk mitigation",
+        "ethics", "ethical", "business ethics",
+        "governance", "corporate governance",
+        # Supporting terms
+        "framework", "frameworks", "compliance framework",
+        "control", "controls", "oversight", "monitoring",
+        "sustainability", "sustainable"
+    ],
+    
+    "Digitalization": [
+        # High-value digitalization terms
+        "digitalization", "digitization", "digitalize",
+        "digital transformation",
+        "automation", "automated", "automate", "automating",
+        # Supporting digital terms
+        "digital", "digitally",
+        "modernize", "modernization", "modernizing",
+        "innovation", "innovative", "innovate",
+        # Tech terms (but less generic than before)
+        "IT system", "technology solution", "digital tool"
+    ],
+    
+    "M&A & Due Diligence": [
+        # Core M&A terms
+        "merger", "mergers", "merge", "merged",
+        "acquisition", "acquisitions", "acquire", "acquired",
+        "M&A", "m&a", "merger and acquisition",
+        # Due diligence - EXPANDED with equivalents
+        "due diligence",
+        "legal due diligence",
+        "regulatory due diligence",
+        "compliance due diligence",
+        "diligence assessment",
+        "diligence review",
+        # Integration
+        "integration", "integrate", "integrated",
+        "post-merger integration", "post-merger",
+        "post-acquisition integration", "post-acquisition",
+        # Transaction terms
+        "transaction", "transactions", "transactional",
+        "deal", "deals",
+        "amalgamation", "amalgamate",
+        "consolidation", "consolidate",
+        "restructuring", "restructure",
+        # Context terms
+        "target", "target company", "target entity"
+    ],
+    
+    "Global Experience": [
+        "global", "globally", "global team",
+        "international", "internationally", "international environment",
+        "regional", "region", "regions",
+        "cross-border", "cross border",
+        "worldwide", "world-wide",
+        "headquarters", "HQ",
+        "collaboration", "collaborate", "collaborative"
+    ],
+    
+    "Project Management": [
+        # Core PM terms
+        "project", "projects",
+        "program", "programs", "programme",
+        "project management", "program management",
+        # PM actions
+        "manage", "managed", "managing", "management",
+        "lead", "led", "leading", "leadership",
+        "coordinate", "coordinating", "coordination", "coordinator",
+        "direct", "directed", "directing",
+        "execute", "executed", "executing", "execution",
+        "deliver", "delivered", "delivery",
+        # PM context
+        "initiative", "initiatives",
+        "implementation", "implement", "implementing",
+        "ownership", "own", "owned",
+        "priorities", "prioritize", "priority",
+        "dynamic", "dynamic environment", "fast-paced",
+        "cross-functional"
+    ],
+    
+    "Training": [
+        # Core training terms
+        "training", "trainings", "trained", "train", "trainer",
+        "training program", "training programs",
+        "workshop", "workshops",
+        "education", "educational", "educate", "educator",
+        "knowledge exchange", "knowledge sharing", "knowledge transfer",
+        # Supporting terms
+        "learning", "learn", "learning and development",
+        "development", "develop", "developing",
+        "mentoring", "mentor", "mentored",
+        "coaching", "coach", "coached",
+        "capability building", "capability", "upskilling",
+        "teach", "teaching"
+    ],
+    
+    "Regulatory Knowledge": [
+        # Specific regulations
+        "FCPA", "Foreign Corrupt Practices Act",
+        "sanctions", "sanction", "sanctioned",
+        "OFAC",
+        # Regulatory terms
+        "regulation", "regulations", "regulatory", "regulate",
+        "regulatory framework", "regulatory frameworks",
+        "regulatory requirement", "regulatory requirements",
+        "regulatory compliance",
+        "compliance requirement", "compliance requirements",
+        # Legal/law terms
+        "law", "laws", "legal",
+        "legal requirement", "legal requirements",
+        "legal compliance"
+    ]
+}
 
 # ----------------------------- 
 # JOB DESCRIPTION
@@ -235,12 +227,11 @@ if cv_file:
     with st.spinner("Analyzing..."):
         results = []
         
-        for skill, config in skills_balanced.items():
-            score = calculate_balanced_score(cv_text, job_desc, config, skill)
-            threshold = config.get("threshold", 70)
-            results.append([skill, score, threshold])
+        for skill, keywords in skills_final.items():
+            score = calculate_similarity_simple(cv_text, job_desc, keywords)
+            results.append([skill, score])
     
-    df = pd.DataFrame(results, columns=["Skill", "Match %", "Threshold"])
+    df = pd.DataFrame(results, columns=["Skill", "Match %"])
     overall_score = round(df["Match %"].mean(), 2)
     
     st.divider()
@@ -248,13 +239,8 @@ if cv_file:
     with col1:
         st.metric("Overall Match", f"{overall_score}%")
     with col2:
-        strong_count = len(df[df["Match %"] >= df["Threshold"]])
-        st.metric("Strong Matches", f"{strong_count}/{len(df)}")
-    
-    df["Status"] = df.apply(
-        lambda x: "Strong ✓" if x["Match %"] >= x["Threshold"] else "Needs Work △",
-        axis=1
-    )
+        strong_count = len(df[df["Match %"] >= 70])
+        st.metric("Strong Matches (≥70%)", f"{strong_count}/{len(df)}")
     
     fig = px.bar(
         df, 
@@ -262,23 +248,14 @@ if cv_file:
         y="Match %",
         title="Skill Match Overview",
         range_y=[0, 100],
-        color="Status",
-        color_discrete_map={"Strong ✓": "#00CC66", "Needs Work △": "#FF9933"}
-    )
-    
-    fig.add_scatter(
-        x=df["Skill"], 
-        y=df["Threshold"],
-        mode='markers',
-        marker=dict(color='red', size=10, symbol='line-ew-open'),
-        name='Threshold',
-        showlegend=True
+        color=df["Match %"].apply(lambda x: "Strong" if x >= 70 else "Needs Work"),
+        color_discrete_map={"Strong": "#00CC66", "Needs Work": "#FF9933"}
     )
     
     st.plotly_chart(fig, use_container_width=True)
     
     st.subheader("✅ Why Hire Me? (Key Strengths)")
-    strengths = df[df["Match %"] >= df["Threshold"]]
+    strengths = df[df["Match %"] >= 70]
     
     if strengths.empty:
         st.info("Focus on improvement areas below.")
@@ -287,10 +264,10 @@ if cv_file:
             st.success(f"**{row['Skill']}** → {row['Match %']}%")
     
     st.subheader("🔧 Improvement Areas")
-    improvements = df[df["Match %"] < df["Threshold"]]
+    improvements = df[df["Match %"] < 70]
     
     if improvements.empty:
-        st.success("🎉 All skills meet thresholds!")
+        st.success("🎉 All skills above 70%!")
     else:
         for _, row in improvements.iterrows():
             st.warning(f"**{row['Skill']}** → {row['Match %']}%")
