@@ -116,12 +116,24 @@ skills = {
 if cv_file:
     cv_text = read_pdf(cv_file)
 
-    results = []
-    for skill, keywords in skills.items():
+   results = []
+
+for skill, keywords in skills.items():
+
+    if skill == "Training":
+        score = keyword_coverage_score(cv_text, keywords)
+
+    else:
         cv_part = " ".join([k for k in keywords if k.lower() in cv_text.lower()])
         jd_part = " ".join([k for k in keywords if k.lower() in job_desc.lower()])
-        score = calculate_similarity(cv_part, jd_part) if cv_part and jd_part else 40
-        results.append([skill, score])
+
+        if cv_part and jd_part:
+            score = calculate_similarity(cv_part, jd_part)
+        else:
+            score = 40
+
+    results.append([skill, score])
+
 
     df = pd.DataFrame(results, columns=["Skill", "Match %"])
     overall_score = round(df["Match %"].mean(), 2)
