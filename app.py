@@ -134,7 +134,6 @@ for skill, keywords in skills.items():
 
     results.append([skill, score])
 
-
     df = pd.DataFrame(results, columns=["Skill", "Match %"])
     overall_score = round(df["Match %"].mean(), 2)
 
