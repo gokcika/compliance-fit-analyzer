@@ -113,7 +113,7 @@ skills = {
             "onboard", "onboarding", "curriculum", "program design", "skill development", "capacity building",
             "knowledge transfer", "knowledge sharing", "train the trainer", "upskilling"
         ],
-        "weight": 1.5 
+        "weight": 1.5
     },
     "Regulatory Knowledge": {
         "keywords": ["regulation", "FCPA", "sanctions", "compliance", "laws", "medtech", "framework"],
@@ -150,10 +150,10 @@ if cv_file:
     overall_score = round(df["Match %"].mean(), 2)
 
     # -----------------------------
-    # Display Results - Two Column Layout
+    # Display Results - Three Column Layout
     # -----------------------------
     st.divider()
-    col1, col2 = col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)  # FIXED: proper unpacking
     
     with col1:
         st.metric("Overall Match", f"{overall_score}%")
