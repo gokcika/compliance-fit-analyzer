@@ -83,11 +83,11 @@ job_desc = (
 )
 
 # -----------------------------
-# Skill keywords - UPDATED
+# Skill keywords - FULLY UPDATED
 # -----------------------------
 skills = {
     "Compliance & Risk Management": [
-        "compliance", "risk", "ethics", 
+        "compliance", "risk", "ethics", "technical compliance", "sustainability", 
         "framework", "governance", "internal control", "audit", "policy", 
         "procedure", "standard", "guideline", "monitoring", "assessment",
         "risk mitigation", "risk management", "risk analysis", "compliance system"
@@ -112,7 +112,8 @@ skills = {
     "Global Experience": [
         "global", "regional", "international", "cross-border", "headquarters", 
         "collaboration", "multinational", "worldwide", "cross-cultural",
-        "remote", "distributed", "multi-region","cross-functional"
+        "remote", "distributed", "multi-region", "Central Asia", "EMEA",
+        "Turkey", "Bulgaria", "Romania", "Saudi Arabia", "cross-functional"
     ],
     
     "Project Management": [
@@ -124,20 +125,48 @@ skills = {
     ],
     
     "Training": [
+        # Core training terms
         "training", "workshop", "education", "knowledge exchange", "learning", 
         "development", "teaching", "coaching", "mentoring", "onboarding",
         "curriculum", "instruction", "facilitation", "presentation", "seminar",
         "e-learning", "certification", "facilitate", "session", "educational",
-        "training programs", "training materials", "capability-building",
-        "knowledge transfer", "train", "deliver", "instructor", "training delivery",
-        "awareness", "customized training"
+        
+        # Program & content
+        "training programs", "training materials", "training modules", "training content",
+        "training resources", "learning materials", "customized training", "tailored training",
+        
+        # Methods & approaches
+        "capability-building", "knowledge transfer", "interactive training", 
+        "hands-on training", "practical training", "in-person training", "engaging training",
+        "experiential learning", "adult learning", "blended learning",
+        
+        # Design & planning
+        "training design", "instructional design", "training strategy", "training approach",
+        "training methodology", "training plan", "training schedule", "learning frameworks",
+        
+        # Delivery & coordination
+        "train", "deliver", "instructor", "training delivery", "training coordination",
+        "training facilitation", "training initiative",
+        
+        # Assessment & outcomes
+        "gap analysis", "training needs", "training assessment", "training evaluation",
+        "learning objectives", "learning outcomes", "training effectiveness", "training impact",
+        "training feedback", "training improvement", "training participation",
+        
+        # Development focus
+        "upskilling", "reskilling", "competency development", "skill development",
+        "professional development", "continuous learning", "learning culture",
+        "awareness", "proficiency", "educational initiatives",
+        
+        # Special programs
+        "train the trainer", "learning and development", "L&D"
     ],
     
     "Regulatory Knowledge": [
-        "regulation", "regulatory", "FCPA", "compliance", "laws", 
-        "medtech", "framework", "legislation", "legal", "statute",
+        "regulation", "regulatory", "FCPA", "sanctions", "compliance", "laws", 
+        "medtech", "framework", "FDA", "legislation", "legal", "statute",
         "directive", "ordinance", "code", "anti-corruption", "anti-bribery",
-        "healthcare regulation", "medical device",
+        "data protection", "GDPR", "healthcare regulation", "medical device",
         "UK Bribery Act", "transparency", "healthcare transparency"
     ]
 }
