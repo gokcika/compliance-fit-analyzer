@@ -1,17 +1,11 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import PyPDF2
 import re
 import numpy as np
-import openai  # OpenAI SDK (old version) for embeddings
-
-# -----------------------------
-# OpenAI API Key
-# -----------------------------
-# Make sure you have OPENAI_API_KEY set in Streamlit secrets
-openai.api_key = st.secrets.get("OPENAI_API_KEY")
 
 # -----------------------------
 # Helper functions
@@ -26,21 +20,13 @@ def read_pdf(file):
             text += page_text + " "
     return text
 
-def get_embedding(text):
-    """Get 1536-dim embedding using OpenAI embeddings API."""
-    response = openai.Embedding.create(
-        model="text-embedding-3-small",
-        input=text
-    )
-    return np.array(response['data'][0]['embedding'])
-
 def calculate_similarity(text1, text2):
-    """Compute sentence-level similarity using embeddings."""
+    """Compute similarity using TF-IDF and cosine similarity."""
     if not text1.strip() or not text2.strip():
         return None  # Not mentioned
-    emb1 = get_embedding(text1)
-    emb2 = get_embedding(text2)
-    score = cosine_similarity([emb1], [emb2])[0][0]
+    vectorizer = TfidfVectorizer(stop_words="english")
+    tfidf = vectorizer.fit_transform([text1, text2])
+    score = cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
     return round(score * 100, 2)
 
 def split_sentences(text):
@@ -49,7 +35,7 @@ def split_sentences(text):
     return [s.strip() for s in sentences if s.strip()]
 
 def extract_sentences(cv_text, keywords):
-    """Extract sentences from CV that contain any of the given keywords."""
+    """Extract sentences from CV containing keywords."""
     sentences = split_sentences(cv_text)
     relevant = []
     for s in sentences:
@@ -79,7 +65,7 @@ job_desc = (
     "was selected to honor our people who dedicate their energy and passion to this cause. "
     "It reflects their pioneering spirit combined with our long history of engineering "
     "in the ever-evolving healthcare industry.\n\n"
-    # ... (rest of job description unchanged)
+    # ... add the full JD here
 )
 
 with st.expander("📄 Job Description"):
@@ -112,7 +98,7 @@ skills = {
     "Training": {
         "keywords": [
             "training", "workshop", "education", "knowledge exchange", "learning", "development",
-            "teach", "teaching", "instructor", "facilitation", "facilitating", "coaching", "mentor", "mentoring",
+            "teach", "teaching", "instructor", "facilitation", "coaching", "mentor", "mentoring",
             "onboard", "onboarding", "curriculum", "program design", "skill development", "capacity building",
             "knowledge transfer", "knowledge sharing", "train the trainer", "upskilling"
         ],
@@ -134,7 +120,7 @@ if cv_file:
     results = []
     total_weight = 0
     weighted_sum = 0
-    skill_sentences = {}  # Skill → list of CV sentences
+    skill_sentences = {}
 
     for skill, skill_data in skills.items():
         keywords = skill_data["keywords"]
@@ -201,7 +187,7 @@ if cv_file:
     # -----------------------------
     # Strengths
     # -----------------------------
-    st.subheader("✅ Why Hire Me? (Key Strengths)")
+    st.subheader("✅ Key Strengths")
     strengths = df_sorted[df_sorted["Score Numeric"] >= 70]
     if strengths.empty:
         st.info("Focus on improvement areas below.")
