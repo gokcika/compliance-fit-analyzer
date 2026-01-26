@@ -6,52 +6,27 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import PyPDF2
 import re
-import numpy as np
 
 # -----------------------------
 # Helper functions
 # -----------------------------
 def read_pdf(file):
-    """Extract text from a PDF file."""
-    try:
-        reader = PyPDF2.PdfReader(file)
-    except Exception as e:
-        st.error(f"Failed to read PDF: {e}")
-        return ""
-
+    reader = PyPDF2.PdfReader(file)
     text = ""
     for page in reader.pages:
-        try:
-            page_text = page.extract_text()
-        except Exception:
-            page_text = None
+        page_text = page.extract_text()
         if page_text:
             text += page_text + " "
     return text
 
-def split_sentences(text: str):
-    """Split text into sentences."""
-    # Normalize any stray HTML escapes (defensive)
-    text = text.replace("&amp;", "&")
-    # Split on punctuation followed by whitespace
-    sentences = re.split(r'(?<=[.!?])\s+', text)
-    return [s.strip() for s in sentences if s and s.strip()]
-
-def extract_sentences(cv_text, keywords):
-    """Extract CV sentences that include any of the keywords."""
-    sentences = split_sentences(cv_text)
-    relevant = []
-    for s in sentences:
-        s_low = s.lower()
-        if any(k.lower() in s_low for k in keywords):
-            relevant.append(s)
-    return relevant
+def clean_text(t):
+    if not t:
+        return ""
+    t = re.sub(r"\s+", " ", t)
+    t = t.replace("\u00A0", " ").strip()
+    return t
 
 def calculate_similarity(text1, text2):
-    """Compute similarity using TF-IDF and cosine similarity."""
-    if not text1 or not text2 or not text1.strip() or not text2.strip():
-        return None  # Not mentioned
-    # English-only stop words (sklearn's built-in)
     vectorizer = TfidfVectorizer(stop_words="english")
     tfidf = vectorizer.fit_transform([text1, text2])
     score = cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
@@ -62,199 +37,148 @@ def calculate_similarity(text1, text2):
 # -----------------------------
 st.set_page_config(page_title="TalentFit", layout="wide")
 st.title("TalentFit: Career Fit Analyzer")
-st.caption("Analyze your PDF CV against a fixed Siemens Healthineers job description and highlight strengths & improvement areas.")
+st.caption("Analyze your CV against a fixed Siemens Healthineers job description and highlight match levels by skill")
 
 # -----------------------------
-# File uploader
+# File uploader with unique key
 # -----------------------------
 cv_file = st.file_uploader("Upload CV (PDF)", type=["pdf"], key="cv_upload_unique")
 
 # -----------------------------
-# Job Description (Expander)
+# Fixed Job Description (Python-friendly)
 # -----------------------------
 job_desc = (
     "Do you want to help create the future of healthcare? Our name, Siemens Healthineers, "
     "was selected to honor our people who dedicate their energy and passion to this cause. "
     "It reflects their pioneering spirit combined with our long history of engineering "
     "in the ever-evolving healthcare industry.\n\n"
-    "Responsibilities include driving compliance and risk governance, supporting digitalization "
-    "initiatives, contributing to M&A due diligence, enabling global collaboration, leading "
-    "project management activities, delivering training programs, and applying regulatory "
-    "knowledge across medtech contexts."
+
+    "We offer you a flexible and dynamic environment with opportunities to go beyond your comfort zone "
+    "in order to grow personally and professionally. Sounds interesting?\n\n"
+
+    "Then come and join our global team as Compliance & Digital Transformation Expert (f/m/d), "
+    "to drive digital transformation in compliance and help shape the future of risk management.\n\n"
+
+    "Choose the best place for your work – Within the scope of this position, it is possible, in consultation "
+    "with your manager, to work mobile (within Germany) up to an average volume of 60% of the respective working hours.\n\n"
+
+    "Even more flexibility? Mobile working from abroad is possible for up to 30 days a year under certain conditions "
+    "and in selected countries.\n\n"
+
+    "This position can be filled anywhere in the world where Siemens Healthineers is present.\n\n"
+
+    "Your tasks and responsibilities:\n"
+    "- You take ownership of developing and executing the compliance department's digitalization strategy.\n"
+    "- You lead and support key digitization projects, ensuring successful implementation in collaboration with global stakeholders.\n"
+    "- You identify compliance needs together with Governance Owners and Regional Compliance Officers and turn them into impactful change projects.\n"
+    "- You assess internal risk management processes, analyze compliance trends (e.g., technical compliance, ethics, sustainability), and develop measures to minimize risk.\n"
+    "- You contribute to M&A transactions from due diligence to integration and support continuous improvement of the Siemens Healthineers Compliance System.\n"
+    "- You foster knowledge exchange with compliance colleagues worldwide and drive innovation in compliance training.\n\n"
+
+    "Your qualifications and experience:\n"
+    "- You have a degree in Compliance, IT, Business Administration, or a related field.\n"
+    "- You have professional experience in compliance and/or IT and/or digitalization projects.\n"
+    "- You have experience in project management and working in international environments.\n"
+    "- Ideally, you have a strong understanding of risk management and compliance frameworks.\n\n"
+
+    "Your attributes and skills:\n"
+    "- You are proficient in English, enabling you to collaborate effectively with global teams and communicate confidently across regions and headquarters.\n"
+    "- You are confident in decision-making under uncertainty and thrive in dynamic environments.\n"
+    "- You have a strong aptitude for new technologies, digitalization, and automation, enabling you to lead initiatives that modernize compliance processes and systems.\n"
+    "- You demonstrate excellent analytical and critical thinking skills.\n"
+    "- You communicate effectively and build trust across diverse teams ensuring smooth collaboration with governance owners, regional compliance officers, and headquarters as well as IT stakeholders.\n"
+    "- You work independently with an entrepreneurial mindset, taking ownership of projects and managing multiple priorities in a global setting.\n"
+    "- You are a team player with strong leadership and interpersonal skills."
 )
 
-with st.expander("📄 Job Description"):
-    st.text(job_desc)
-
 # -----------------------------
-# Skill keywords WITH WEIGHTS
+# Skill keywords
 # -----------------------------
 skills = {
-    "Compliance & Risk Management": {
-        "keywords": ["compliance", "risk", "ethics", "technical compliance", "sustainability", "framework", "governance"],
-        "weight": 1.0
-    },
-    "Digitalization": {
-        "keywords": ["digital", "digitalization", "automation", "system", "tool", "IT", "technology", "modernize", "innovation"],
-        "weight": 1.0
-    },
-    "M&A & Due Diligence": {
-        "keywords": ["merger", "acquisition", "due diligence", "integration", "transaction"],
-        "weight": 1.0
-    },
-    "Global Experience": {
-        "keywords": ["global", "regional", "international", "cross-border", "headquarters", "collaboration"],
-        "weight": 1.0
-    },
-    "Project Management": {
-        "keywords": ["project", "program", "coordination", "initiative", "implementation", "ownership", "priorities", "dynamic environment"],
-        "weight": 1.0
-    },
-    "Training": {
-        "keywords": [
-            "training", "workshop", "education", "knowledge exchange", "learning", "development",
-            "teach", "teaching", "instructor", "facilitation", "coaching", "mentor", "mentoring",
-            "onboard", "onboarding", "curriculum", "program design", "skill development", "capacity building",
-            "knowledge transfer", "knowledge sharing", "train the trainer", "upskilling"
-        ],
-        "weight": 1.5
-    },
-    "Regulatory Knowledge": {
-        "keywords": ["regulation", "FCPA", "sanctions", "compliance", "laws", "medtech", "framework"],
-        "weight": 1.0
-    }
+    "Compliance & Risk Management": [
+        "compliance", "risk", "ethics", "technical compliance", "sustainability", "framework", "governance"
+    ],
+    "Digitalization": [
+        "digital", "digitalization", "automation", "system", "tool", "IT", "technology", "modernize", "innovation"
+    ],
+    "M&A & Due Diligence": [
+        "merger", "acquisition", "due diligence", "integration", "transaction"
+    ],
+    "Global Experience": [
+        "global", "regional", "international", "cross-border", "headquarters", "collaboration"
+    ],
+    "Project Management": [
+        "project", "program", "coordination", "initiative", "implementation", "ownership", "priorities", "dynamic environment"
+    ],
+    "Training": [
+        "training", "workshop", "education", "knowledge exchange", "learning", "development"
+    ],
+    "Regulatory Knowledge": [
+        "regulation", "FCPA", "sanctions", "compliance", "laws", "medtech", "framework"
+    ]
 }
 
 # -----------------------------
-# Process CV
+# Process CV and calculate skill match
 # -----------------------------
 if cv_file:
-    cv_text = read_pdf(cv_file)
-
-    if not cv_text or not cv_text.strip():
-        st.error("No text could be extracted from the PDF. Please upload a text-based (non-scanned) PDF.")
-        st.stop()
-
-    cv_sentences = split_sentences(cv_text)
+    raw_cv_text = read_pdf(cv_file)
+    cv_text = clean_text(raw_cv_text)
+    job_desc_clean = clean_text(job_desc)
 
     results = []
-    total_weight = 0.0
-    weighted_sum = 0.0
-    skill_sentences = {}
+    for skill, keywords in skills.items():
+        cv_part = " ".join([k for k in keywords if k.lower() in cv_text.lower()])
+        jd_part = " ".join([k for k in keywords if k.lower() in job_desc_clean.lower()])
+        score = calculate_similarity(cv_part, jd_part) if cv_part and jd_part else 40
+        results.append([skill, score])
 
-    # Pre-split JD and select relevant parts by keywords to make similarity fairer
-    jd_sentences = split_sentences(job_desc)
-
-    for skill, skill_data in skills.items():
-        keywords = skill_data["keywords"]
-        weight = skill_data["weight"]
-
-        # Sentences in CV that match the keywords
-        relevant_sents = extract_sentences(cv_text, keywords)
-        skill_sentences[skill] = relevant_sents
-
-        # Relevant sentences from JD that match the keywords (fallback to full JD if none)
-        jd_relevant = [s for s in jd_sentences if any(k.lower() in s.lower() for k in keywords)]
-        jd_part = " ".join(jd_relevant) if jd_relevant else job_desc
-
-        cv_part = " ".join(relevant_sents)
-
-        score = calculate_similarity(cv_part, jd_part)
-        if score is None:
-            display_score = "Not mentioned"
-            score_for_mean = 0.0
-            example_sentence = "No example in CV"
-        else:
-            display_score = score
-            score_for_mean = float(score)
-            example_sentence = relevant_sents[0] if relevant_sents else "No example in CV"
-
-        weighted_sum += score_for_mean * weight
-        total_weight += weight
-
-        results.append([skill, display_score, score_for_mean, weight, example_sentence])
-
-    df = pd.DataFrame(results, columns=["Skill", "Match %", "Score Numeric", "Weight", "Example Sentence"])
-    df_sorted = df.sort_values("Score Numeric", ascending=False).reset_index(drop=True)
-    overall_score = round((weighted_sum / total_weight), 2) if total_weight > 0 else 0.0
+    df = pd.DataFrame(results, columns=["Skill", "Match %"])
+    overall_score = round(df["Match %"].mean(), 2)
 
     # -----------------------------
-    # Metrics
+    # Display Results - Two Column Layout (Metrics)
     # -----------------------------
     st.divider()
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
         st.metric("Overall Match", f"{overall_score}%")
     with col2:
-        strong_count = int((df["Score Numeric"] >= 70).sum())
+        strong_count = len(df[df["Match %"] >= 70])
         st.metric("Strong Matches (≥70%)", f"{strong_count}/{len(df)}")
-    with col3:
-        if not df_sorted.empty:
-            top_skill_row = df_sorted.iloc[0]
-            st.metric("Top Skill", f"{top_skill_row['Skill']}", f"{top_skill_row['Match %']}")
-        else:
-            st.metric("Top Skill", "—", "—")
 
     # -----------------------------
-    # Skills Ranked Table
+    # Skills Ranked by Match (Bar Chart)
     # -----------------------------
     st.subheader("📊 Skills Ranked by Match")
-    for idx, row in df_sorted.iterrows():
-        c1, c2, c3 = st.columns([0.5, 3, 3])
-        with c1:
-            st.markdown(f"**#{idx+1}**")
-        with c2:
-            st.markdown(f"**{row['Skill']}**")
-        with c3:
-            val = row['Match %']
-            example = row["Example Sentence"]
-            if val == "Not mentioned":
-                st.info(f"N/A — {example}")
-            elif row['Score Numeric'] >= 70:
-                st.success(f"{val}% — {example}")
-            else:
-                st.warning(f"{val}% — {example}")
+    df_sorted = df.sort_values("Match %", ascending=False)
 
-    # -----------------------------
-    # Strengths
-    # -----------------------------
-    st.subheader("✅ Key Strengths")
-    strengths = df_sorted[df_sorted["Score Numeric"] >= 70]
-    if strengths.empty:
-        st.info("Focus on improvement areas below.")
-    else:
-        for _, row in strengths.iterrows():
-            sentences = skill_sentences[row["Skill"]]
-            example = sentences[0] if sentences else "No example in CV"
-            st.success(f"**{row['Skill']}** → {row['Match %']}%\n> {example}")
+    fig = px.bar(
+        df_sorted,
+        x="Skill",
+        y="Match %",
+        title="Skill Match Overview",
+        range_y=[0, 100],
+        color=df_sorted["Match %"].apply(lambda x: "Strong" if x >= 70 else "Needs Work"),
+        color_discrete_map={"Strong": "#00CC66", "Needs Work": "#FF9933"}
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
-    # -----------------------------
-    # Improvement Areas
-    # -----------------------------
-    st.subheader("🔧 Improvement Areas")
-    improvements = df_sorted[df_sorted["Score Numeric"] < 70]
-    if improvements.empty:
-        st.success("🎉 All skills are at or above 70%!")
-    else:
-        for _, row in improvements.iterrows():
-            missing_keywords = [
-                k for k in skills[row["Skill"]]["keywords"]
-                if not any(k.lower() in s.lower() for s in cv_sentences)
-            ]
-            suggestion = f"Consider mentioning: {', '.join(missing_keywords)}" if missing_keywords else "Add relevant experience."
-            st.warning(f"**{row['Skill']}** → {row['Match %']}%\n> {suggestion}")
+    # (Opsiyonel) Sıralı tablo gösterme
+    with st.expander("Tabloyu Göster (Sıralı)"):
+        st.dataframe(df_sorted.reset_index(drop=True), use_container_width=True)
 
     # -----------------------------
     # CSV Download
     # -----------------------------
     st.divider()
-    csv = df_sorted.drop(columns=["Score Numeric"]).to_csv(index=False)
+    csv = df_sorted.to_csv(index=False)
     st.download_button(
-        "📥 Download Results",
+        "📥 Download Results (CSV)",
         csv,
         "cv_analysis.csv",
         "text/csv"
     )
 
 else:
-    st.info("👆 Upload your CV (PDF format) to begin.")
+    st.info("👆 Upload your CV (PDF format) to begin")
