@@ -1,9 +1,16 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import PyPDF2
+import re
+import numpy as np
+from openai import OpenAI
+
+# -----------------------------
+# Initialize OpenAI client
+# -----------------------------
+client = OpenAI(api_key=st.secrets.get("OPENAI_API_KEY"))
 
 # -----------------------------
 # Helper functions
@@ -17,11 +24,37 @@ def read_pdf(file):
             text += page_text + " "
     return text
 
+def get_embedding(text):
+    """Return 1536-dim text embedding from OpenAI."""
+    response = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=text
+    )
+    return np.array(response.data[0].embedding)
+
 def calculate_similarity(text1, text2):
-    vectorizer = TfidfVectorizer(stop_words="english")
-    tfidf = vectorizer.fit_transform([text1, text2])
-    score = cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
+    """Sentence-level similarity using embeddings."""
+    if not text1.strip() or not text2.strip():
+        return None  # Not mentioned
+    emb1 = get_embedding(text1)
+    emb2 = get_embedding(text2)
+    score = cosine_similarity([emb1], [emb2])[0][0]
     return round(score * 100, 2)
+
+def split_sentences(text):
+    """Split text into sentences."""
+    sentences = re.split(r'(?<=[.!?]) +', text)
+    return [s.strip() for s in sentences if s.strip()]
+
+def extract_sentences(cv_text, keywords):
+    sentences = split_sentences(cv_text)
+    relevant = []
+    for s in sentences:
+        for k in keywords:
+            if k.lower() in s.lower():
+                relevant.append(s)
+                break
+    return relevant
 
 # -----------------------------
 # Streamlit UI
@@ -31,12 +64,12 @@ st.title("TalentFit: Career Fit Analyzer")
 st.caption("Analyze your CV against a fixed Siemens Healthineers job description and highlight strengths & improvement areas")
 
 # -----------------------------
-# File uploader with unique key
+# File uploader
 # -----------------------------
 cv_file = st.file_uploader("Upload CV (PDF)", type=["pdf"], key="cv_upload_unique")
 
 # -----------------------------
-# Fixed Job Description (Python-friendly)
+# Job Description (expander)
 # -----------------------------
 job_desc = (
     "Do you want to help create the future of healthcare? Our name, Siemens Healthineers, "
@@ -82,6 +115,9 @@ job_desc = (
     "- You are a team player with strong leadership and interpersonal skills."
 )
 
+with st.expander("📄 Job Description"):
+    st.text(job_desc)
+
 # -----------------------------
 # Skill keywords WITH WEIGHTS
 # -----------------------------
@@ -122,109 +158,110 @@ skills = {
 }
 
 # -----------------------------
-# Process CV and calculate skill match
+# Process CV
 # -----------------------------
 if cv_file:
     cv_text = read_pdf(cv_file)
+    cv_sentences = split_sentences(cv_text)
 
     results = []
+    total_weight = 0
+    weighted_sum = 0
+    skill_sentences = {}  # Skill → list of CV sentences
+
     for skill, skill_data in skills.items():
         keywords = skill_data["keywords"]
         weight = skill_data["weight"]
-        
-        cv_part = " ".join([k for k in keywords if k.lower() in cv_text.lower()])
-        jd_part = " ".join([k for k in keywords if k.lower() in job_desc.lower()])
-        
-        base_score = calculate_similarity(cv_part, jd_part) if cv_part and jd_part else 40
-        
-        # Apply weight multiplier
-        weighted_score = min(100, base_score * weight)  # Cap at 100%
-        
-        results.append([skill, round(weighted_score, 2)])
 
-    df = pd.DataFrame(results, columns=["Skill", "Match %"])
-    
-    # Sort by Match % descending (highest to lowest)
-    df = df.sort_values("Match %", ascending=False).reset_index(drop=True)
-    
-    overall_score = round(df["Match %"].mean(), 2)
+        relevant_sents = extract_sentences(cv_text, keywords)
+        skill_sentences[skill] = relevant_sents
+
+        jd_part = " ".join([k for k in keywords if k.lower() in job_desc.lower()])
+        cv_part = " ".join(relevant_sents)
+
+        score = calculate_similarity(cv_part, jd_part)
+        if score is None:
+            display_score = "Not mentioned"
+            score_for_mean = 0
+        else:
+            display_score = score
+            score_for_mean = score
+
+        weighted_sum += score_for_mean * weight
+        total_weight += weight
+
+        example_sentence = relevant_sents[0] if relevant_sents else "No example in CV"
+        results.append([skill, display_score, score_for_mean, weight, example_sentence])
+
+    df = pd.DataFrame(results, columns=["Skill", "Match %", "Score Numeric", "Weight", "Example Sentence"])
+    df_sorted = df.sort_values("Score Numeric", ascending=False).reset_index(drop=True)
+    overall_score = round(weighted_sum / total_weight, 2) if total_weight > 0 else 0
 
     # -----------------------------
-    # Display Results - Three Column Layout
+    # Three Column Metrics
     # -----------------------------
     st.divider()
-    col1, col2, col3 = st.columns(3)  # FIXED: proper unpacking
-    
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Overall Match", f"{overall_score}%")
-    
     with col2:
-        strong_count = len(df[df["Match %"] >= 70])
+        strong_count = len(df[df["Score Numeric"] >= 70])
         st.metric("Strong Matches (≥70%)", f"{strong_count}/{len(df)}")
-    
     with col3:
-        top_skill = df.iloc[0]
-        st.metric("Top Skill", f"{top_skill['Skill'][:20]}...", f"{top_skill['Match %']}%")
+        top_skill_row = df_sorted.iloc[0]
+        st.metric("Top Skill", f"{top_skill_row['Skill'][:20]}...", f"{top_skill_row['Match %']}%")
 
     # -----------------------------
-    # Colored Bar Chart (sorted)
-    # -----------------------------
-    fig = px.bar(
-        df,
-        x="Skill",
-        y="Match %",
-        title="Skill Match Overview (Ranked)",
-        range_y=[0, 100],
-        color=df["Match %"].apply(lambda x: "Strong" if x >= 70 else "Needs Work"),
-        color_discrete_map={"Strong": "#00CC66", "Needs Work": "#FF9933"}
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    # -----------------------------
-    # Ranked Skills Table
+    # Skills Ranked Table
     # -----------------------------
     st.subheader("📊 Skills Ranked by Match")
-    for idx, row in df.iterrows():
-        col1, col2, col3 = st.columns([0.5, 3, 1])
+    for idx, row in df_sorted.iterrows():
+        col1, col2, col3 = st.columns([0.5, 3, 3])
         with col1:
             st.markdown(f"**#{idx+1}**")
         with col2:
             st.markdown(f"**{row['Skill']}**")
         with col3:
-            if row['Match %'] >= 70:
-                st.success(f"{row['Match %']}%")
+            val = row['Match %']
+            example = row["Example Sentence"]
+            if val == "Not mentioned":
+                st.info(f"N/A — {example}")
+            elif row['Score Numeric'] >= 70:
+                st.success(f"{val}% — {example}")
             else:
-                st.warning(f"{row['Match %']}%")
+                st.warning(f"{val}% — {example}")
 
     # -----------------------------
-    # Highlight strengths
+    # Strengths
     # -----------------------------
     st.subheader("✅ Why Hire Me? (Key Strengths)")
-    strengths = df[df["Match %"] >= 70]
-
+    strengths = df_sorted[df_sorted["Score Numeric"] >= 70]
     if strengths.empty:
         st.info("Focus on improvement areas below.")
     else:
         for _, row in strengths.iterrows():
-            st.success(f"**{row['Skill']}** → {row['Match %']}%")
+            sentences = skill_sentences[row["Skill"]]
+            example = sentences[0] if sentences else "No example in CV"
+            st.success(f"**{row['Skill']}** → {row['Match %']}%\n> {example}")
 
     # -----------------------------
     # Improvement Areas
     # -----------------------------
     st.subheader("🔧 Improvement Areas")
-    improvements = df[df["Match %"] < 70]
-
+    improvements = df_sorted[df_sorted["Score Numeric"] < 70]
     if improvements.empty:
         st.success("🎉 All skills above 70%!")
     else:
         for _, row in improvements.iterrows():
-            st.warning(f"**{row['Skill']}** → {row['Match %']}%")
+            missing_keywords = [k for k in skills[row["Skill"]]["keywords"] if not any(k.lower() in s.lower() for s in cv_sentences)]
+            suggestion = f"Consider mentioning: {', '.join(missing_keywords)}" if missing_keywords else "Add relevant experience."
+            st.warning(f"**{row['Skill']}** → {row['Match %']}%\n> {suggestion}")
 
     # -----------------------------
     # CSV Download
     # -----------------------------
     st.divider()
-    csv = df.to_csv(index=False)
+    csv = df_sorted.drop(columns=["Score Numeric"]).to_csv(index=False)
     st.download_button(
         "📥 Download Results",
         csv,
