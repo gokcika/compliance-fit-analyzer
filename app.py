@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -11,46 +12,57 @@ import numpy as np
 # Helper functions
 # -----------------------------
 def read_pdf(file):
-    """Extract text from PDF file."""
-    reader = PyPDF2.PdfReader(file)
+    """Extract text from a PDF file."""
+    try:
+        reader = PyPDF2.PdfReader(file)
+    except Exception as e:
+        st.error(f"Failed to read PDF: {e}")
+        return ""
+
     text = ""
     for page in reader.pages:
-        page_text = page.extract_text()
+        try:
+            page_text = page.extract_text()
+        except Exception:
+            page_text = None
         if page_text:
             text += page_text + " "
     return text
 
+def split_sentences(text: str):
+    """Split text into sentences."""
+    # Normalize any stray HTML escapes (defensive)
+    text = text.replace("&amp;", "&")
+    # Split on punctuation followed by whitespace
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    return [s.strip() for s in sentences if s and s.strip()]
+
+def extract_sentences(cv_text, keywords):
+    """Extract CV sentences that include any of the keywords."""
+    sentences = split_sentences(cv_text)
+    relevant = []
+    for s in sentences:
+        s_low = s.lower()
+        if any(k.lower() in s_low for k in keywords):
+            relevant.append(s)
+    return relevant
+
 def calculate_similarity(text1, text2):
     """Compute similarity using TF-IDF and cosine similarity."""
-    if not text1.strip() or not text2.strip():
+    if not text1 or not text2 or not text1.strip() or not text2.strip():
         return None  # Not mentioned
+    # English-only stop words (sklearn's built-in)
     vectorizer = TfidfVectorizer(stop_words="english")
     tfidf = vectorizer.fit_transform([text1, text2])
     score = cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
     return round(score * 100, 2)
-
-def split_sentences(text):
-    """Split text into sentences."""
-    sentences = re.split(r'(?<=[.!?]) +', text)
-    return [s.strip() for s in sentences if s.strip()]
-
-def extract_sentences(cv_text, keywords):
-    """Extract sentences from CV containing keywords."""
-    sentences = split_sentences(cv_text)
-    relevant = []
-    for s in sentences:
-        for k in keywords:
-            if k.lower() in s.lower():
-                relevant.append(s)
-                break
-    return relevant
 
 # -----------------------------
 # Streamlit UI
 # -----------------------------
 st.set_page_config(page_title="TalentFit", layout="wide")
 st.title("TalentFit: Career Fit Analyzer")
-st.caption("Analyze your CV against a fixed Siemens Healthineers job description and highlight strengths & improvement areas")
+st.caption("Analyze your PDF CV against a fixed Siemens Healthineers job description and highlight strengths & improvement areas.")
 
 # -----------------------------
 # File uploader
@@ -65,7 +77,10 @@ job_desc = (
     "was selected to honor our people who dedicate their energy and passion to this cause. "
     "It reflects their pioneering spirit combined with our long history of engineering "
     "in the ever-evolving healthcare industry.\n\n"
-    # ... add the full JD here
+    "Responsibilities include driving compliance and risk governance, supporting digitalization "
+    "initiatives, contributing to M&A due diligence, enabling global collaboration, leading "
+    "project management activities, delivering training programs, and applying regulatory "
+    "knowledge across medtech contexts."
 )
 
 with st.expander("📄 Job Description"):
@@ -115,40 +130,53 @@ skills = {
 # -----------------------------
 if cv_file:
     cv_text = read_pdf(cv_file)
+
+    if not cv_text or not cv_text.strip():
+        st.error("No text could be extracted from the PDF. Please upload a text-based (non-scanned) PDF.")
+        st.stop()
+
     cv_sentences = split_sentences(cv_text)
 
     results = []
-    total_weight = 0
-    weighted_sum = 0
+    total_weight = 0.0
+    weighted_sum = 0.0
     skill_sentences = {}
+
+    # Pre-split JD and select relevant parts by keywords to make similarity fairer
+    jd_sentences = split_sentences(job_desc)
 
     for skill, skill_data in skills.items():
         keywords = skill_data["keywords"]
         weight = skill_data["weight"]
 
+        # Sentences in CV that match the keywords
         relevant_sents = extract_sentences(cv_text, keywords)
         skill_sentences[skill] = relevant_sents
 
-        jd_part = " ".join([k for k in keywords if k.lower() in job_desc.lower()])
+        # Relevant sentences from JD that match the keywords (fallback to full JD if none)
+        jd_relevant = [s for s in jd_sentences if any(k.lower() in s.lower() for k in keywords)]
+        jd_part = " ".join(jd_relevant) if jd_relevant else job_desc
+
         cv_part = " ".join(relevant_sents)
 
         score = calculate_similarity(cv_part, jd_part)
         if score is None:
             display_score = "Not mentioned"
-            score_for_mean = 0
+            score_for_mean = 0.0
+            example_sentence = "No example in CV"
         else:
             display_score = score
-            score_for_mean = score
+            score_for_mean = float(score)
+            example_sentence = relevant_sents[0] if relevant_sents else "No example in CV"
 
         weighted_sum += score_for_mean * weight
         total_weight += weight
 
-        example_sentence = relevant_sents[0] if relevant_sents else "No example in CV"
         results.append([skill, display_score, score_for_mean, weight, example_sentence])
 
     df = pd.DataFrame(results, columns=["Skill", "Match %", "Score Numeric", "Weight", "Example Sentence"])
     df_sorted = df.sort_values("Score Numeric", ascending=False).reset_index(drop=True)
-    overall_score = round(weighted_sum / total_weight, 2) if total_weight > 0 else 0
+    overall_score = round((weighted_sum / total_weight), 2) if total_weight > 0 else 0.0
 
     # -----------------------------
     # Metrics
@@ -158,23 +186,26 @@ if cv_file:
     with col1:
         st.metric("Overall Match", f"{overall_score}%")
     with col2:
-        strong_count = len(df[df["Score Numeric"] >= 70])
+        strong_count = int((df["Score Numeric"] >= 70).sum())
         st.metric("Strong Matches (≥70%)", f"{strong_count}/{len(df)}")
     with col3:
-        top_skill_row = df_sorted.iloc[0]
-        st.metric("Top Skill", f"{top_skill_row['Skill'][:20]}...", f"{top_skill_row['Match %']}%")
+        if not df_sorted.empty:
+            top_skill_row = df_sorted.iloc[0]
+            st.metric("Top Skill", f"{top_skill_row['Skill']}", f"{top_skill_row['Match %']}")
+        else:
+            st.metric("Top Skill", "—", "—")
 
     # -----------------------------
     # Skills Ranked Table
     # -----------------------------
     st.subheader("📊 Skills Ranked by Match")
     for idx, row in df_sorted.iterrows():
-        col1, col2, col3 = st.columns([0.5, 3, 3])
-        with col1:
+        c1, c2, c3 = st.columns([0.5, 3, 3])
+        with c1:
             st.markdown(f"**#{idx+1}**")
-        with col2:
+        with c2:
             st.markdown(f"**{row['Skill']}**")
-        with col3:
+        with c3:
             val = row['Match %']
             example = row["Example Sentence"]
             if val == "Not mentioned":
@@ -203,10 +234,13 @@ if cv_file:
     st.subheader("🔧 Improvement Areas")
     improvements = df_sorted[df_sorted["Score Numeric"] < 70]
     if improvements.empty:
-        st.success("🎉 All skills above 70%!")
+        st.success("🎉 All skills are at or above 70%!")
     else:
         for _, row in improvements.iterrows():
-            missing_keywords = [k for k in skills[row["Skill"]]["keywords"] if not any(k.lower() in s.lower() for s in cv_sentences)]
+            missing_keywords = [
+                k for k in skills[row["Skill"]]["keywords"]
+                if not any(k.lower() in s.lower() for s in cv_sentences)
+            ]
             suggestion = f"Consider mentioning: {', '.join(missing_keywords)}" if missing_keywords else "Add relevant experience."
             st.warning(f"**{row['Skill']}** → {row['Match %']}%\n> {suggestion}")
 
@@ -223,4 +257,4 @@ if cv_file:
     )
 
 else:
-    st.info("👆 Upload your CV (PDF format) to begin")
+    st.info("👆 Upload your CV (PDF format) to begin.")
