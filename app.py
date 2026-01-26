@@ -164,12 +164,10 @@ if cv_file:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    
-with st.expander("Show Table (Ranked)"):
+    with st.expander("Show Table (Ranked)"):
     df_show = df_sorted.reset_index(drop=True)
     df_show.index = df_show.index + 1  # 1’den başlat
     st.dataframe(df_show, use_container_width=True)
-
 
     # -----------------------------
     # CSV Download
