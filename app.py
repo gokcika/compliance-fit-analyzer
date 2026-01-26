@@ -5,12 +5,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 import PyPDF2
 import re
 import numpy as np
-from openai import OpenAI
+import openai  # eski SDK uyumlu
 
 # -----------------------------
-# Initialize OpenAI client
+# OpenAI API Key
 # -----------------------------
-client = OpenAI(api_key=st.secrets.get("OPENAI_API_KEY"))
+# Streamlit Cloud'da st.secrets içinde OPENAI_API_KEY olmalı
+openai.api_key = st.secrets.get("OPENAI_API_KEY")
 
 # -----------------------------
 # Helper functions
@@ -25,12 +26,12 @@ def read_pdf(file):
     return text
 
 def get_embedding(text):
-    """Return 1536-dim text embedding from OpenAI."""
-    response = client.embeddings.create(
+    """Return 1536-dim embedding using OpenAI embeddings API."""
+    response = openai.Embedding.create(
         model="text-embedding-3-small",
         input=text
     )
-    return np.array(response.data[0].embedding)
+    return np.array(response['data'][0]['embedding'])
 
 def calculate_similarity(text1, text2):
     """Sentence-level similarity using embeddings."""
